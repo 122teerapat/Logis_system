@@ -27,7 +27,9 @@ import { updateShipmentStatus, getAllStatus, getShipmentById ,getShipmentRoute }
 import { LongdoMap, longdo, map } from "../longdo-map/LongdoMap.jsx";
 
 
+
 const ShipmentDetails = () => {
+  
   const { shipmentId } = useParams();
   const navigate = useNavigate();
   const [shipment, setShipment] = useState(null);
@@ -41,7 +43,7 @@ const ShipmentDetails = () => {
     departureTime: '',
     estimatedArrival: ''
   });
-  const mapKey = '5e3612dcbfa88a77bf9cc6773e5a1545';
+  const mapKey = import.meta.env.VITE_LONGDO_API_KEY;
   const [routeDistance, setRouteDistance] = useState('');
   const [routeDuration, setRouteDuration] = useState('');
   const [routeAdded, setRouteAdded] = useState(false);
