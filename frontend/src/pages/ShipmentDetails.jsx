@@ -21,15 +21,18 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Checkbox
 } from '@mui/material';
-import { updateShipmentStatus, getAllStatus, getShipmentById ,getShipmentRoute } from '../api';
+import { updateShipmentStatus, getAllStatus, getShipmentById, getShipmentRoute,  updateParcelStatus } from '../api';
 import { LongdoMap, longdo, map } from "../longdo-map/LongdoMap.jsx";
-
-
+import DirectionsIcon from '@mui/icons-material/Directions';
 
 const ShipmentDetails = () => {
-  
   const { shipmentId } = useParams();
   const navigate = useNavigate();
   const [shipment, setShipment] = useState(null);
@@ -47,6 +50,16 @@ const ShipmentDetails = () => {
   const [routeDistance, setRouteDistance] = useState('');
   const [routeDuration, setRouteDuration] = useState('');
   const [routeAdded, setRouteAdded] = useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedParcels, setSelectedParcels] = useState([]);
+  const [statusForm, setStatusForm] = useState({
+    StatusID: '',
+    Detail: '',
+    BranchID: '',
+    Datetime: new Date().toISOString().slice(0, 16)
+  });
+  const [branches, setBranches] = useState([]);
+  const [routeData, setRouteData] = useState([]);
 
   // เพิ่ม script Longdo Map
   const initMap = async () => {
@@ -73,33 +86,42 @@ const ShipmentDetails = () => {
         // ตั้งค่าการค้นหาเส้นทาง
         map.Route.placeholder(document.getElementById('result'));
         map.Route.clearDestination();
-        // เพิ่ม route เฉพาะเมื่อยังไม่เคยเพิ่ม
-        if (!routeAdded) {
-          map.Route.add(new longdo.Marker({ lon: 100.5755463000000, lat: 13.8798446700000 }, { 
-              title: 'Origin', 
-              detail: "I'm here" 
-          }));
+        
+        if (Array.isArray(locationList) && locationList.length > 1) {
+          const firstRoute = locationList[0];
 
-          if (Array.isArray(locationList) && locationList.length > 1) {
-            locationList.forEach(route => {
-                if (route.DesLongitude && route.DesLatitude) {
-                    console.log(route);
-                    map.Route.add(new longdo.Marker({ 
-                        lon: parseFloat(route.DesLongitude), 
-                        lat: parseFloat(route.DesLatitude) 
-                    }, {
-                        title: route.BranchName || 'สาขา',
-                        detail: `Located at ${route.DesLongitude}, ${route.DesLatitude}`
-                    }));
-                }
-            });
-          }
-          setRouteAdded(true);
+          if (firstRoute.OriginLatitude && firstRoute.OriginLongitude) {
+            map.Route.add(new longdo.Marker({
+                lon: parseFloat(firstRoute.OriginLongitude),
+                lat: parseFloat(firstRoute.OriginLatitude)
+            }, {
+                title: firstRoute.OriginHubName || 'จุดเริ่มต้น',
+                detail: `Located at ${firstRoute.OriginLongitude}, ${firstRoute.OriginLatitude}`
+            }));
         }
 
+          locationList.forEach(route => {
+              if (route.DesLongitude && route.DesLatitude) {
+                  console.log(route);
+                  map.Route.add(new longdo.Marker({ 
+                      lon: parseFloat(route.DesLongitude), 
+                      lat: parseFloat(route.DesLatitude) 
+                  }, {
+                      title: route.DestinationHubName || 'สาขา',
+                      detail: `Located at ${route.DesLongitude}, ${route.DesLatitude}`
+                  }));
+              }
+          });
+        }
+        setRouteAdded(true);
+        
+        map.Route.mode(longdo.RouteMode.Cost);
+        map.Route.enableRoute(longdo.RouteType.AllTransit, false);
+        map.Route.enableRoute(longdo.RouteType.Tollway, false);
+        map.Route.enableRoute(longdo.RouteType.Road, true);
         map.Route.search();
         map.Route.enableContextMenu();
-        map.Route.auto(true);
+        map.Route.auto(false);
         
         
         const refreshInterval = setInterval(() => {
@@ -162,10 +184,48 @@ const ShipmentDetails = () => {
     }
   };
 
+  const fetchBranches = async () => {
+    try {
+      const response = await getShipmentRoute(shipmentId);
+      console.log('API Response:', response.data);
+      
+      if (Array.isArray(response.data)) {
+        const uniqueBranches = response.data.reduce((acc, route) => {
+          if (route.DestinationHubID && route.DestinationHubName && !acc.some(b => b.DestinationHubID === route.DestinationHubID)) {
+            acc.push({
+              DestinationHubID: route.DestinationHubID,
+              BranchName: route.DestinationHubName,
+              DesLongitude: route.DesLongitude,
+              DesLatitude: route.DesLatitude
+            });
+          }
+          return acc;
+        }, []);
+        
+        console.log('Unique Branches:', uniqueBranches);
+        setBranches(uniqueBranches);
+      }
+    } catch (error) {
+      console.error('Error fetching branches:', error);
+    }
+  };
+
+  // เพิ่มฟังก์ชันสำหรับดึงข้อมูลเส้นทาง
+  const fetchRouteData = async () => {
+    try {
+      const response = await getShipmentRoute(shipmentId);
+      setRouteData(response.data);
+    } catch (error) {
+      console.error('Error fetching route data:', error);
+    }
+  };
+
   useEffect(() => {
     fetchShipmentDetails();
     fetchStatusList();
     initMap();
+    fetchBranches();
+    fetchRouteData();
 
     return () => {
       if (map) {
@@ -175,20 +235,6 @@ const ShipmentDetails = () => {
     };
   }, [shipmentId]);
 
-  // อัพเดทสถานะการจัดส่ง
-  const handleStatusChange = async (newStatusId) => {
-    try {
-      await updateShipmentStatus(shipmentId, newStatusId);
-      setSnackbarMessage('อัพเดทสถานะสำเร็จ');
-      setSnackbarSeverity('success');
-      setOpenSnackbar(true);
-      fetchShipmentDetails();
-    } catch (error) {
-      setSnackbarMessage('เกิดข้อผิดพลาดในการอัพเดทสถานะ');
-      setSnackbarSeverity('error');
-      setOpenSnackbar(true);
-    }
-  };
 
   // แปลงสถานะเป็นภาษาไทย
   const getStatusText = (status) => {
@@ -217,6 +263,56 @@ const ShipmentDetails = () => {
     }
   };
 
+  const handleParcelSelect = (parcelId) => {
+    setSelectedParcels(prev => {
+      if (prev.includes(parcelId)) {
+        return prev.filter(id => id !== parcelId);
+      } else {
+        return [...prev, parcelId];
+      }
+    });
+  };
+
+  const handleBulkStatusChange = () => {
+    if (selectedParcels.length === 0) {
+      setError('กรุณาเลือกพัสดุอย่างน้อย 1 รายการ');
+      return;
+    }
+    setOpenDialog(true);
+  };
+
+  const handleSubmitStatus = async () => {
+    try {
+      const promises = selectedParcels.map(parcelId => 
+        updateParcelStatus(
+          parcelId,
+          statusForm.StatusID,
+          statusForm.Datetime,
+          statusForm.Detail,
+          statusForm.BranchID
+        )
+      );
+      
+      await Promise.all(promises);
+      setOpenDialog(false);
+      setSelectedParcels([]);
+      fetchShipmentDetails();
+    } catch (error) {
+      setError('ไม่สามารถอัพเดทสถานะได้');
+      console.error('Error updating status:', error);
+    }
+  };
+
+  // เพิ่มฟังก์ชันสำหรับดูเส้นทาง
+  const handleViewRoute = (sequence) => {
+    navigate(`/shipment/${shipmentId}/route/${sequence}`, {
+      state: {
+        shipmentId: shipmentId,
+        sequence: sequence,
+      }
+    });
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
@@ -236,8 +332,6 @@ const ShipmentDetails = () => {
     );
   }
 
-
-  
   return (
     <Container maxWidth="lg">
       <Box sx={{ mt: 4, mb: 4 }}>
@@ -308,7 +402,7 @@ const ShipmentDetails = () => {
         {/* แผนที่ */}
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 2, height: '500px' }}>
-          <div style={{ width: '100%', height: '400px' }}>
+          <div style={{ width: '100%', height: '470px' }}>
             <LongdoMap id="longdo-map" mapKey={mapKey} callback={initMap} />
           </div>
           </Paper>
@@ -333,62 +427,120 @@ const ShipmentDetails = () => {
 
         {/* รายการพัสดุ */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              รายการพัสดุ
-            </Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>รหัสพัสดุ</TableCell>
-                    <TableCell>ผู้ส่ง</TableCell>
-                    <TableCell>เบอร์ผู้ส่ง</TableCell>
-                    <TableCell>ผู้รับ</TableCell>
-                    <TableCell>เบอร์ผู้รับ</TableCell>
-                    <TableCell>ที่อยู่</TableCell>
-                    <TableCell>ตำบล</TableCell>
-                    <TableCell>อำเภอ</TableCell>
-                    <TableCell>จังหวัด</TableCell>
-                    <TableCell>รหัสไปรษณีย์</TableCell>
-                    
-                    <TableCell>สถานะ</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {shipment.parcels && shipment.parcels.length > 0 ? (
-                    shipment.parcels.map((parcel) => (
-                      <TableRow key={parcel.ParcelID}>
-                        <TableCell>{parcel.ParcelID}</TableCell>
-                        <TableCell>{parcel.Sender || '-'}</TableCell>
-                        <TableCell>{parcel.Sender_Tel || '-'}</TableCell>
-                        <TableCell>{parcel.Receiver || '-'}</TableCell>
-                        <TableCell>{parcel.Receiver_Tel || '-'}</TableCell>               
-                        <TableCell>{parcel.Address || '-'}</TableCell>
-                        <TableCell>{parcel.Subdistrict || '-'}</TableCell>
-                        <TableCell>{parcel.District || '-'}</TableCell>
-                        <TableCell>{parcel.Province || '-'}</TableCell>
-                        <TableCell>{parcel.Postal_code || '-'}</TableCell>
-       
-                        <TableCell> 
-                          <Chip 
-                            label={getStatusText(parcel.Status)} 
-                            color={getStatusColor(parcel.Status)}
-                            size="small"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={12} align="center">
-                        ไม่มีรายการพัสดุ
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">
+                พัสดุ
+              </Typography>
+              {selectedParcels.length > 0 && (
+                <Button
+                  variant="contained"
+                  onClick={handleBulkStatusChange}
+                >
+                  แก้ไขสถานะ ({selectedParcels.length} รายการ)
+                </Button>
+              )}
+            </Box>
+            {routeData.map((route, index) => {
+              const branchParcels = shipment.parcels.filter(
+                parcel => parcel.DestinationHubID === route.DestinationHubID
+              );
+              
+              if (branchParcels.length === 0) return null;
+
+              return (
+                <Box key={route.DestinationHubID} sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                      {route.DestinationHubName}
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      startIcon={<DirectionsIcon />}
+                      onClick={() => handleViewRoute(route.Sequence)}
+                    >
+                      ดูเส้นทาง
+                    </Button>
+                  </Box>
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              checked={selectedParcels.length === branchParcels.length && branchParcels.every(p => selectedParcels.includes(p.ParcelID))}
+                              indeterminate={selectedParcels.some(id => branchParcels.some(p => p.ParcelID === id)) && !branchParcels.every(p => selectedParcels.includes(p.ParcelID))}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedParcels(prev => [...new Set([...prev, ...branchParcels.map(p => p.ParcelID)])]);
+                                } else {
+                                  setSelectedParcels(prev => prev.filter(id => !branchParcels.some(p => p.ParcelID === id)));
+                                }
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>รหัสพัสดุ</TableCell>
+                          <TableCell>ผู้ส่ง</TableCell>
+                          <TableCell>ผู้รับ</TableCell>
+                          <TableCell>ที่อยู่</TableCell>
+                          <TableCell>ตำบล</TableCell>
+                          <TableCell>อำเภอ</TableCell>
+                          <TableCell>จังหวัด</TableCell>
+                          <TableCell>รหัสไปรษณีย์</TableCell>
+                          <TableCell>สถานะ</TableCell>
+                          <TableCell>การจัดการ</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {branchParcels.map((parcel) => (
+                          <TableRow key={parcel.ParcelID}>
+                            <TableCell padding="checkbox">
+                              <Checkbox
+                                checked={selectedParcels.includes(parcel.ParcelID)}
+                                onChange={() => handleParcelSelect(parcel.ParcelID)}
+                              />
+                            </TableCell>
+                            <TableCell>{parcel.ParcelID}</TableCell>
+                            <TableCell>{parcel.Sender}</TableCell>
+                            <TableCell>{parcel.Receiver}</TableCell>
+                            <TableCell>{parcel.Address || '-'}</TableCell>
+                            <TableCell>{parcel.Subdistrict || '-'}</TableCell>
+                            <TableCell>{parcel.District || '-'}</TableCell>
+                            <TableCell>{parcel.Province || '-'}</TableCell>
+                            <TableCell>{parcel.Postal_code || '-'}</TableCell>
+                            <TableCell>
+                              <Chip 
+                                label={getStatusText(parcel.Status)} 
+                                color={getStatusColor(parcel.Status)}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => {
+                                  setSelectedParcels([parcel.ParcelID]);
+                                  setStatusForm({
+                                    StatusID: parcel.Status || '',
+                                    Detail: '',
+                                    BranchID: route.DestinationHubID,
+                                    Datetime: new Date().toISOString().slice(0, 16)
+                                  });
+                                  setOpenDialog(true);
+                                }}
+                              >
+                                แก้ไขสถานะ
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              );
+            })}
           </Paper>
         </Grid>
       </Grid>
@@ -403,6 +555,71 @@ const ShipmentDetails = () => {
           {snackbarMessage}
         </Alert>
       </Snackbar>
+
+      {/* Dialog สำหรับแก้ไขสถานะ */}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          แก้ไขสถานะพัสดุ {selectedParcels.length > 1 ? `(${selectedParcels.length} รายการ)` : ''}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>สถานะ</InputLabel>
+              <Select
+                value={statusForm.StatusID}
+                onChange={(e) => setStatusForm({ ...statusForm, StatusID: e.target.value })}
+                label="สถานะ"
+              >
+                {statusList.map((status) => (
+                  <MenuItem key={status.StatusID} value={status.StatusID}>
+                    {status.StatusName}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="รายละเอียด"
+              multiline
+              rows={3}
+              value={statusForm.Detail}
+              onChange={(e) => setStatusForm({ ...statusForm, Detail: e.target.value })}
+            />
+            <TextField
+              label="วันที่และเวลา"
+              type="datetime-local"
+              value={statusForm.Datetime}
+              onChange={(e) => setStatusForm({ ...statusForm, Datetime: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+            />
+            <FormControl fullWidth>
+              <InputLabel>สาขา</InputLabel>
+              <Select
+                value={statusForm.BranchID}
+                onChange={(e) => setStatusForm({ ...statusForm, BranchID: e.target.value })}
+                label="สาขา"
+              >
+                {branches.length > 0 ? (
+                  branches.map((branch) => (
+                    <MenuItem key={branch.DestinationHubID} value={branch.DestinationHubID}>
+                      {branch.BranchName}
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem value="" disabled>
+                    ไม่พบข้อมูล 
+                  </MenuItem>
+                )}
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>ยกเลิก</Button>
+          <Button onClick={handleSubmitStatus} variant="contained">
+            บันทึก
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

@@ -5,11 +5,10 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Parcels from './pages/Parcels';
 import Regions from './pages/Regions';
-import Weight from './pages/Weight';
 import Shipments from './pages/Shipments';
 import ShipmentDetails from './pages/ShipmentDetails';
-import Reports from './pages/Reports';
 import UploadCSV from './pages/UploadCSV';
+import BranchMap from './pages/BranchMap';
 
 const theme = createTheme({
   palette: {
@@ -32,11 +31,11 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/parcels" element={<Parcels />} />
             <Route path="/regions" element={<Regions />} />
-            <Route path="/weight" element={<Weight />} />
             <Route path="/shipments" element={<Shipments />} />
             <Route path="/shipments/:shipmentId" element={<ShipmentDetails />} />
-            <Route path="/reports" element={<Reports />} />
             <Route path="/upload" element={<UploadCSV />} />
+            <Route path="/branch-map" element={<BranchMap />} />
+            <Route path="/shipment/:shipmentId/route/:routeId" element={<BranchMap />} />
           </Routes>
         </Layout>
       </Router>

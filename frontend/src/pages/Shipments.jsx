@@ -33,11 +33,6 @@ const Shipments = () => {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [selectedShipment, setSelectedShipment] = useState(null);
-  const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
-  const [openStatusDialog, setOpenStatusDialog] = useState(false);
-  const [newStatus, setNewStatus] = useState('');
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
@@ -102,38 +97,13 @@ const Shipments = () => {
     fetchStatusList();
   }, []);
 
-  // ดึงรายละเอียดการจัดส่ง
-  const handleViewDetails = (shipmentId) => {
-    // ใช้ข้อมูลที่มีอยู่แล้วจาก shipments state
-    const shipment = shipments.find(s => s.ShipmentID === shipmentId);
-    if (shipment) {
-      setSelectedShipment(shipment);
-      setOpenDetailsDialog(true);
-    } else {
-      setError('ไม่พบข้อมูลการจัดส่ง');
-    }
-  };
 
-  // อัพเดทสถานะการจัดส่ง
-  const handleStatusChange = async (shipmentId, newStatusId) => {
-    try {
-      await updateShipmentStatus(shipmentId, newStatusId);
-      setSnackbarMessage('อัพเดทสถานะสำเร็จ');
-      setSnackbarSeverity('success');
-      setOpenSnackbar(true);
-      fetchShipments(); // รีเฟรชข้อมูล
-    } catch (error) {
-      setSnackbarMessage('เกิดข้อผิดพลาดในการอัพเดทสถานะ');
-      setSnackbarSeverity('error');
-      setOpenSnackbar(true);
-    }
-  };
 
   // แปลงสถานะเป็นภาษาไทย
   const getStatusText = (status) => {
-    if (!status) return 'ไม่ทราบสถานะ';
+    if (!status) return 'รอดำเนินการ';
     const statusItem = statusList.find(s => s.StatusID === status);
-    return statusItem ? statusItem.StatusName : 'ไม่ทราบสถานะ';
+    return statusItem ? statusItem.StatusName : 'รอดำเนินการ';
   };
 
   // แปลงสถานะเป็นสี
@@ -207,23 +177,11 @@ const Shipments = () => {
                       <TableCell>{new Date(shipment.EstimatedArrival).toLocaleString('th-TH')}</TableCell>
                       <TableCell>{shipment.parcels.length} รายการ</TableCell>
                       <TableCell>
-                        <FormControl size="small" sx={{ minWidth: 120 }}>
-                          <Select
-                            value={shipment.Status || ''}
-                            onChange={(e) => handleStatusChange(shipment.ShipmentID, e.target.value)}
-                            displayEmpty
-                          >
-                            <MenuItem value="">
-                              <em>เลือกสถานะ</em>
-                            </MenuItem>
-                            {statusList.map((status) => (
-                              <MenuItem key={status.StatusID} value={status.StatusID}>
-                                {status.StatusName}
-                                
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
+                              <Chip 
+                                label={getStatusText(shipment.Status)} 
+                                color={getStatusColor(shipment.Status)}
+                                size="small"
+                              />
                       </TableCell>
                       <TableCell>
                         <Button
@@ -244,85 +202,6 @@ const Shipments = () => {
         </Paper>
       </Box>
 
-      {/* Dialog แสดงรายละเอียดการจัดส่ง */}
-      <Dialog 
-        open={openDetailsDialog} 
-        onClose={() => setOpenDetailsDialog(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          รายละเอียดการจัดส่ง #{selectedShipment?.ShipmentID}
-        </DialogTitle>
-        <DialogContent>
-          {selectedShipment && (
-            <Box sx={{ pt: 2 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    ข้อมูลการจัดส่ง
-                  </Typography>
-                  <Typography>
-                    เวลาออกเดินทาง: {new Date(selectedShipment.DepartureTime).toLocaleString('th-TH')}
-                  </Typography>
-                  <Typography>
-                    เวลาที่คาดว่าจะถึง: {new Date(selectedShipment.EstimatedArrival).toLocaleString('th-TH')}
-                  </Typography>
-                  <Typography>
-                    จำนวนพัสดุ: {selectedShipment.parcels.length} รายการ
-                  </Typography>
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    รายการพัสดุ
-                  </Typography>
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>รหัสพัสดุ</TableCell>
-                          <TableCell>น้ำหนัก</TableCell>
-                          <TableCell>พื้นที่</TableCell>
-                          <TableCell>ที่อยู่</TableCell>
-                          <TableCell>ตำบล</TableCell>
-                          <TableCell>อำเภอ</TableCell>
-                          <TableCell>จังหวัด</TableCell>
-                          <TableCell>รหัสไปรษณีย์</TableCell>
-                          <TableCell>สถานะ</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {selectedShipment.parcels.map((parcel) => (
-                          <TableRow key={parcel.ParcelID}>
-                            <TableCell>{parcel.ParcelID}</TableCell>
-                            <TableCell>{parcel.Weight} กรัม</TableCell>
-                            <TableCell>{parcel.Area ? parcel.Area.toFixed(2) : '-'} ลูกบาศก์เมตร</TableCell>
-                            <TableCell>{parcel.Address || '-'}</TableCell>
-                            <TableCell>{parcel.Subdistrict || '-'}</TableCell>
-                            <TableCell>{parcel.District || '-'}</TableCell>
-                            <TableCell>{parcel.Province || '-'}</TableCell>
-                            <TableCell>{parcel.Postal_code || '-'}</TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={parcel.StatusName} 
-                                color={getStatusColor(parcel.StatusName)}
-                                size="small"
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Grid>
-              </Grid>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDetailsDialog(false)}>ปิด</Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Snackbar สำหรับแสดงข้อความสำเร็จ */}
       <Snackbar

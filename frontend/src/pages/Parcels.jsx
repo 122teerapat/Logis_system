@@ -14,14 +14,21 @@ import {
   Box,
   TextField,
   InputAdornment,
-  Select,
-  MenuItem,
-  FormControl,
   Snackbar,
-  Alert
+  Alert,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  Divider
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import { getAllParcels, getAllStatus, updateParcelStatus } from '../api';
+import { getAllParcels, getParcelStatusList } from '../api';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 const Parcels = () => {
   const [parcels, setParcels] = useState([]);
@@ -31,21 +38,19 @@ const Parcels = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState(null);
+  const [selectedParcel, setSelectedParcel] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [parcelsResponse, statusResponse] = await Promise.all([
-          getAllParcels(),
-          getAllStatus()
-        ]);
-        
+        const parcelsResponse = await getAllParcels();
+      
         const parcelsData = Array.isArray(parcelsResponse.data) ? parcelsResponse.data : [];
-        console.log('Parcels data:', parcelsData);
-        console.log('Status data:', statusResponse.data);
-        
+
         setParcels(parcelsData);
-        setStatusList(statusResponse.data || []);
+
       } catch (error) {
         console.error('Error fetching data:', error);
         setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
@@ -58,21 +63,6 @@ const Parcels = () => {
     fetchData();
   }, []);
 
-  // ฟังก์ชันสำหรับอัพเดทสถานะ
-  const handleStatusChange = async (parcelId, newStatusId) => {
-    try {
-      await updateParcelStatus(parcelId, newStatusId);
-      // อัพเดทข้อมูลใน state
-      setParcels(parcels.map(parcel => 
-        parcel.ParcelID === parcelId 
-          ? { ...parcel, Status: newStatusId }
-          : parcel
-      ));
-    } catch (error) {
-      console.error('Error updating status:', error);
-      setError('เกิดข้อผิดพลาดในการอัพเดทสถานะ');
-    }
-  };
 
   // กรองข้อมูลตามคำค้นหา
   const filteredParcels = Array.isArray(parcels) ? parcels.filter(parcel => {
@@ -91,8 +81,7 @@ const Parcels = () => {
     );
   }) : [];
 
-  // คำนวณจำนวนหน้าทั้งหมด
-  const totalPages = Math.ceil(filteredParcels.length / rowsPerPage);
+
 
   // ดึงข้อมูลสำหรับหน้าปัจจุบัน
   const currentPageData = filteredParcels.slice(
@@ -112,6 +101,22 @@ const Parcels = () => {
   // ฟังก์ชันสำหรับแสดงน้ำหนัก
   const renderWeight = (weight) => {
     return `${weight} กรัม`;
+  };
+
+  // ฟังก์ชันดูสถานะพัสดุ
+  const handleViewStatus = async (parcel) => {
+    try {
+      setSelectedParcel(parcel);
+      setLoadingStatus(true);
+      const response = await getParcelStatusList(parcel.ParcelID);
+      setStatusList(response.data);
+      setOpenDialog(true);
+    } catch (error) {
+      console.error('Error fetching parcel status:', error);
+      setError('เกิดข้อผิดพลาดในการดึงข้อมูลสถานะพัสดุ');
+    } finally {
+      setLoadingStatus(false);
+    }
   };
 
   if (loading) {
@@ -161,13 +166,13 @@ const Parcels = () => {
               <TableCell>ที่อยู่</TableCell>
               <TableCell>ตำบล</TableCell>
               <TableCell>อำเภอ</TableCell>
-              <TableCell>จังหวัด</TableCell>
-              <TableCell>สถานะ</TableCell>
+              <TableCell>จังหวัด</TableCell>         
+              <TableCell>รายการสถานะ</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentPageData.map((parcel) => (
-              <TableRow key={parcel.ParcelID}>
+            {currentPageData.map((parcel, index) => (
+              <TableRow key={`${parcel.ParcelID}-${index}`}>
                 <TableCell>{parcel.ParcelID}</TableCell>
                 <TableCell>{renderWeight(parcel.Weight)}</TableCell>
                 <TableCell>{parcel.Sender || '-'}</TableCell>
@@ -178,22 +183,13 @@ const Parcels = () => {
                 <TableCell>{parcel.Province}</TableCell>
                 
                 <TableCell>
-                  <FormControl fullWidth size="small">
-                    <Select
-                      value={parcel.Status || ''}
-                      onChange={(e) => handleStatusChange(parcel.ParcelID, e.target.value)}
-                      displayEmpty
-                    >
-                      <MenuItem value="" disabled>
-                        เลือกสถานะ
-                      </MenuItem>
-                      {statusList.map((status) => (
-                        <MenuItem key={status.StatusID} value={status.StatusID}>
-                          {status.StatusName}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <Button
+                    startIcon={<VisibilityIcon />}
+                    onClick={() => handleViewStatus(parcel)}
+                    size="small"
+                  >
+                    ดูสถานะ
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -214,6 +210,66 @@ const Parcels = () => {
         }
         rowsPerPageOptions={[5, 10, 25, 50]}
       />
+
+      {/* Dialog แสดงสถานะพัสดุ */}
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          ประวัติสถานะพัสดุ
+          {selectedParcel && ` - ${selectedParcel.ParcelID}`}
+        </DialogTitle>
+        <DialogContent>
+          {loadingStatus ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <List>
+              {statusList.map((status, index) => (
+                <Box key={index}>
+                  <ListItem>
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                            {index + 1}.
+                          </Typography>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                            {status.AltName}
+                          </Typography>
+                          <Typography variant="body1" color="text.secondary" sx={{ ml: 'auto' }}>
+                            {new Date(status.DateTime).toLocaleString('th-TH')}
+                          </Typography>
+                        </Box>
+                      }
+                      secondary={
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant="body1" color="text.secondary">
+                            สาขา: {status.BranchName || '-'}
+                          </Typography>
+                          {status.Detail && (
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                              รายละเอียด: {status.Detail}
+                            </Typography>
+                          )}
+                        </Box>
+                      }
+                    />
+                  </ListItem>
+                  {index < statusList.length - 1 && <Divider />}
+                </Box>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>ปิด</Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar 
         open={!!error} 

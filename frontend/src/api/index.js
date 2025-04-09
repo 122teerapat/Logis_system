@@ -1,3 +1,4 @@
+import { OilBarrel } from '@mui/icons-material';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8081';
@@ -14,9 +15,7 @@ export const getParcelsByRegion = (region) => {
 };
 
 // ดึงข้อมูลน้ำหนักพัสดุและความสามารถในการบรรทุก
-export const getParcelWeight = () => {
-    return axios.get(`${API_URL}/parcel/weight`);
-};
+
 
 // ฟังก์ชันสำหรับดึงรายการสถานะทั้งหมด
 export const getStatusList = () => {
@@ -29,7 +28,7 @@ export const getAllStatus = () => {
 };
 
 // ฟังก์ชันสำหรับอัพเดทสถานะพัสดุ
-export const updateParcelStatus = (parcelId, statusId) => {
+export const updateParcelStatusOld = (parcelId, statusId) => {
     return axios.put(`${API_URL}/parcel/${parcelId}`, { StatusID: statusId });
 };
 
@@ -57,8 +56,16 @@ export const getBranch = () => {
     return axios.get(`${API_URL}/branch`);
 };
 
+export const getParcelStatusList = (parcelId) => {
+    return axios.get(`${API_URL}/parcel-status-list/${parcelId}`);
+};
+
 export const getShipmentRoute = (shipmentId) => {
     return axios.get(`${API_URL}/shipment-route/${shipmentId}`);
+};
+
+export const getShipmentRouteByIndex= (shipmentId, sequence) => {
+    return axios.get(`${API_URL}/shipment-route-index/${shipmentId}/${sequence}`);
 };
 
 export const uploadShipmentCSV = (file) => {
@@ -67,4 +74,17 @@ export const uploadShipmentCSV = (file) => {
             'accept': 'application/json'
         }
     });
+};
+
+export const updateParcelStatus = (parcelId, statusId , Datetime, Detail, BranchID) => {
+    return axios.post(`${API_URL}/parcel/status/${parcelId}`, { StatusID: statusId, Datetime: Datetime, Detail: Detail, BranchID: BranchID});
+};
+
+export const updateShipmentRouteByIndex = async (shipmentId, routeId, data) => {
+  try {
+    const response = await axios.put(`${API_URL}/shipment/${shipmentId}/route/${routeId}`, data);
+    return response;
+  } catch (error) {
+    throw error;
+  }
 };
