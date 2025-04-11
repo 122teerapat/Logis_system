@@ -14,13 +14,6 @@ export const getParcelsByRegion = (region) => {
     return axios.get(`${API_URL}/parcel/region/${region}`);
 };
 
-// ดึงข้อมูลน้ำหนักพัสดุและความสามารถในการบรรทุก
-
-
-// ฟังก์ชันสำหรับดึงรายการสถานะทั้งหมด
-export const getStatusList = () => {
-    return axios.get(`${API_URL}/StatusList`);
-};
 
 // ฟังก์ชันสำหรับฟังก์ชันสำหรับดึงข้อมูลสถานะทั้งหมด
 export const getAllStatus = () => {
@@ -32,10 +25,6 @@ export const updateParcelStatusOld = (parcelId, statusId) => {
     return axios.put(`${API_URL}/parcel/${parcelId}`, { StatusID: statusId });
 };
 
-// ฟังก์ชันสำหรับสร้างการจัดส่ง
-export const createShipment = (shipmentData) => {
-    return axios.post(`${API_URL}/shipment`, shipmentData);
-};
 
 // ฟังก์ชันสำหรับดึงข้อมูลการจัดส่งทั้งหมด
 export const getAllShipments = () => {

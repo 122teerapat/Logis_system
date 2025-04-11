@@ -36,7 +36,8 @@ const BranchMap = () => {
   const [error, setError] = useState(null);
   const [routeDistance, setRouteDistance] = useState('');
   const [routeDuration, setRouteDuration] = useState('');
-
+  const [distance, setDistance] = useState('');
+  const [duration, setDuration] = useState('');
   const [routeMode, setRouteMode] = useState('distance');
   const [useTollway, setUseTollway] = useState(false);
   const mapKey = import.meta.env.VITE_LONGDO_API_KEY;
@@ -147,6 +148,8 @@ const BranchMap = () => {
       const refresh = setInterval(() => {
         setRouteDistance(map.Route.distance(true));
         setRouteDuration(map.Route.interval(true));
+        setDistance(map.Route.distance(false));
+        setDuration(map.Route.interval(false));
       }, 3000);
 
       return () => {
@@ -171,23 +174,19 @@ const BranchMap = () => {
 
     try {
       setUpdating(true);
-      
-      // แปลงระยะเวลาเป็นวินาที (เช่น "2 ชม." เป็น 7200 วินาที)
-      const durationInSeconds = parseInt(routeDuration);
-      
-      // แปลงระยะทางเป็นตัวเลข (เช่น "150 กม." เป็น 150)
-      const distanceInKm = parseInt(routeDistance);
+    
 
       const updateData = {
-        Distance: distanceInKm,
-        Duration: durationInSeconds,
-        Date_Time: startTime,
-        Status: 'In Transit'
+        Distance: distance,
+        Duration: duration,
+        Departure_time: startTime,
       };
 
       await updateShipmentRouteByIndex(shipmentId, routeId, updateData);
       setOpenDialog(false);
       setStartTime('');
+      setDistance('');
+      setDuration('');
       // รีเฟรชข้อมูลเส้นทาง
       fetchRouteData();
     } catch (error) {

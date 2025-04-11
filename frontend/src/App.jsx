@@ -4,7 +4,6 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Parcels from './pages/Parcels';
-import Regions from './pages/Regions';
 import Shipments from './pages/Shipments';
 import ShipmentDetails from './pages/ShipmentDetails';
 import UploadCSV from './pages/UploadCSV';
@@ -30,7 +29,6 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/parcels" element={<Parcels />} />
-            <Route path="/regions" element={<Regions />} />
             <Route path="/shipments" element={<Shipments />} />
             <Route path="/shipments/:shipmentId" element={<ShipmentDetails />} />
             <Route path="/upload" element={<UploadCSV />} />

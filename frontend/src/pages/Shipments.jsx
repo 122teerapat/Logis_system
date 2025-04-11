@@ -61,7 +61,7 @@ const Shipments = () => {
           acc[item.ShipmentID] = {
             ShipmentID: item.ShipmentID,
             DepartureTime: item.Departure_time,
-            EstimatedArrival: item.Estimated_arrival,
+            EstimatedArrival: item.Estimated_time,
             Status: item.Status,
             parcels: []
           };
