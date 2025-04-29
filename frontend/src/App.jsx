@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import Parcels from './pages/Parcels';
 import Shipments from './pages/Shipments';
 import ShipmentDetails from './pages/ShipmentDetails';
+import Reports from './pages/Reports';
 import UploadCSV from './pages/UploadCSV';
 import BranchMap from './pages/BranchMap';
 
@@ -31,6 +32,7 @@ function App() {
             <Route path="/parcels" element={<Parcels />} />
             <Route path="/shipments" element={<Shipments />} />
             <Route path="/shipments/:shipmentId" element={<ShipmentDetails />} />
+            <Route path="/reports" element={<Reports />} />
             <Route path="/upload" element={<UploadCSV />} />
             <Route path="/branch-map" element={<BranchMap />} />
             <Route path="/shipment/:shipmentId/route/:routeId" element={<BranchMap />} />

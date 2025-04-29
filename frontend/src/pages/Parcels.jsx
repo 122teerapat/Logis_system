@@ -167,7 +167,7 @@ const Parcels = () => {
               <TableCell>ตำบล</TableCell>
               <TableCell>อำเภอ</TableCell>
               <TableCell>จังหวัด</TableCell>         
-              <TableCell>สถานะ</TableCell>
+              <TableCell>รายการสถานะ</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

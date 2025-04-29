@@ -9,31 +9,14 @@ export const getAllParcels = () => {
     return axios.get(`${API_URL}/all-parcel`);
 };
 
-// ดึงข้อมูลพัสดุตามภูมิภาค
-export const getParcelsByRegion = (region) => {
-    return axios.get(`${API_URL}/parcel/region/${region}`);
-};
-
-
 // ฟังก์ชันสำหรับฟังก์ชันสำหรับดึงข้อมูลสถานะทั้งหมด
 export const getAllStatus = () => {
     return axios.get(`${API_URL}/StatusList`);
 };
 
-// ฟังก์ชันสำหรับอัพเดทสถานะพัสดุ
-export const updateParcelStatusOld = (parcelId, statusId) => {
-    return axios.put(`${API_URL}/parcel/${parcelId}`, { StatusID: statusId });
-};
-
-
 // ฟังก์ชันสำหรับดึงข้อมูลการจัดส่งทั้งหมด
 export const getAllShipments = () => {
     return axios.get(`${API_URL}/all-shipment`);
-};
-
-// ฟังก์ชันสำหรับอัพเดทสถานะการจัดส่ง
-export const updateShipmentStatus = (shipmentId, statusId) => {
-    return axios.put(`${API_URL}/shipment-status/${shipmentId}`, { StatusID: statusId });
 };
 
 // ฟังก์ชันสำหรับดึงรายละเอียดการจัดส่งตาม ID
@@ -67,6 +50,10 @@ export const uploadShipmentCSV = (file) => {
 
 export const updateParcelStatus = (parcelId, statusId , Datetime, Detail, BranchID) => {
     return axios.post(`${API_URL}/parcel/status/${parcelId}`, { StatusID: statusId, Datetime: Datetime, Detail: Detail, BranchID: BranchID});
+};
+
+export const updateShipmentStatusByIndex = (shipmentId, statusId, DateTime, Detail, BranchID) => {
+    return axios.post(`${API_URL}/shipment/status/${shipmentId}`, { StatusID: statusId, DateTime: DateTime, Detail: Detail, BranchID: BranchID});
 };
 
 export const updateShipmentRouteByIndex = async (shipmentId, routeId, data) => {

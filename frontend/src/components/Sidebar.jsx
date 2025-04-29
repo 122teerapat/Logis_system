@@ -33,7 +33,6 @@ const Sidebar = () => {
   const menuItems = [
     { text: 'หน้าหลัก', icon: <HomeIcon />, path: '/' },
     { text: 'พัสดุ', icon: <LocalShippingIcon />, path: '/parcels' },
-    { text: 'ภูมิภาค', icon: <MapIcon />, path: '/regions' },
     { text: 'การจัดส่ง', icon: <LocalShippingIcon />, path: '/shipments' },
     { text: 'รายงาน', icon: <AssessmentIcon />, path: '/reports' },
     { text: 'อัพโหลด CSV', icon: <UploadFile />, path: '/upload' },
@@ -73,7 +72,7 @@ const Sidebar = () => {
           <List>
             {menuItems.map((item) => (
               <ListItem
-                button
+              
                 key={item.text}
                 onClick={() => navigate(item.path)}
                 sx={{

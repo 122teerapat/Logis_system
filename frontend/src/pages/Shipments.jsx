@@ -11,22 +11,12 @@ import {
   TableHead,
   TableRow,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
   CircularProgress,
   Alert,
   Snackbar,
-  Grid,
   Chip,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel
 } from '@mui/material';
-import { getAllShipments, updateShipmentStatus, getAllStatus } from '../api';
+import { getAllShipments, getAllStatus } from '../api';
 import { useNavigate } from 'react-router-dom';
 
 const Shipments = () => {

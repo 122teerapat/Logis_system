@@ -21,56 +21,12 @@ const db = mysql.createConnection({
     database: process.env.DB_Name
 })
 
-const regions = {
-        "north": [
-            "เชียงใหม่", "เชียงราย", "ลำปาง", "ลำพูน", "แพร่", 
-            "น่าน", "พะเยา", "แม่ฮ่องสอน", "อุตรดิตถ์", 
-            "พิษณุโลก", "สุโขทัย", "ตาก", "กำแพงเพชร", 
-            "นครสวรรค์", "พิจิตร"
-        ],
-        "northeast": [
-            "กาฬสินธุ์", "ขอนแก่น", "ชัยภูมิ", "นครพนม", "นครราชสีมา", 
-            "บึงกาฬ", "บุรีรัมย์", "มหาสารคาม", "มุกดาหาร", "ยโสธร", 
-            "ร้อยเอ็ด", "เลย", "ศรีสะเกษ", "สกลนคร", "สุรินทร์", 
-            "หนองคาย", "หนองบัวลำภู", "อำนาจเจริญ", "อุดรธานี", "อุบลราชธานี", 
-            "เพชรบูรณ์"
-        ],
-        "central": [
-            "อุทัยธานี", "ชัยนาท", "สิงห์บุรี", "อ่างทอง", "พระนครศรีอยุธยา", 
-            "ลพบุรี", "สระบุรี", "นครนายก", "ปราจีนบุรี", "สระแก้ว", 
-            "ฉะเชิงเทรา", "ชลบุรี", "ระยอง", "จันทบุรี", "ตราด", "กรุงเทพมหานคร", 
-            "นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "สมุทรสาคร", "สมุทรสงคราม", 
-            "นครปฐม", "สุพรรณบุรี", "กาญจนบุรี", "ราชบุรี", "เพชรบุรี", "ประจวบคีรีขันธ์"
-        ],
-        "south": [
-            "ชุมพร", "สุราษฎร์ธานี", "นครศรีธรรมราช", "พัทลุง", "สงขลา", 
-            "ปัตตานี", "ยะลา", "นราธิวาส", "กระบี่", "พังงา", 
-            "ภูเก็ต", "ตรัง", "สตูล", "ระนอง"
-        ]    
-};
-
 app.get("/", (req, res) => {
     return res.json("from backend")
 })
 
 
-//////////branch////////////////////
-app.get('/all-branch', (req, res) => {
-    const sql = `SELECT
-        BranchCode, 
-        BranchName, 
-        Tel,
-        Latitude, 
-        Longitude
-    FROM logis_branch`;
-    db.query(sql, (err, data) => {
-        if(err) return res.json(err.message);
-        return res.json(data);
-    })
-})
 
-
-//////status////////////////////
 app.get('/StatusList', (req, res) => {
     const sql = "SELECT * FROM logis_shipment_status"
     db.query(sql, (err, data) =>{
@@ -79,30 +35,7 @@ app.get('/StatusList', (req, res) => {
     })
 })
 
-app.get('/parcel/region/:region', (req, res) => {
-    const region = req.params.region;
 
-    if (!regions[region]) {
-        return res.status(400).json({ message: "Invalid region" });
-    }
-
-    const sql = `
-    SELECT
-        p.Weight,p.Width,p.Height,p.Length,
-        p.ParcelID, p.Sender,p.Receiver, p.Address,
-        p.Subdistrict,p.District,p.Province,p.Postal_code
-    FROM
-        logis_parcel p
-    WHERE
-        p.Province IN (?)`;
-    db.query(sql, [regions[region]], (err, data) => {
-        if (err) return res.status(500).json({ error: err.message });
-        return res.json(data);
-    });
-})
-
-
-//////////parcel////////////////////    
 app.get('/all-parcel', (req, res) => {
     const sql = `SELECT
         p.Weight,
@@ -127,40 +60,16 @@ app.get('/all-parcel', (req, res) => {
     })
 })
 
-//////////parcel status list////////////////////    
-app.get('/parcel-status-list/:parcelId', (req, res) => {
-    const parcelId = req.params.parcelId;
-    const sql = `SELECT 
-        sl.ParcelID,
-        sl.Sequence,
-        sl.DateTime,
-        ss.AltName,
-        b.BranchName
-    FROM  logis_parcel_status_history sl
-    LEFT JOIN 
-    logis_shipment_status ss ON sl.StatusID = ss.StatusID
-    LEFT JOIN
-    logis_branch b ON sl.BranchID = b.BranchCode
-    WHERE sl.ParcelID = ?`;
-    db.query(sql, [parcelId], (err, data) => {
-        if(err) return res.json(err.message);
-        return res.json(data);
-    })
-})
 
-//////////parcel update status////////////////////    
-app.put('/parcel/:id', (req, res) => {
+app.get('/parcel/status/:id', (req, res) => {
     const id = req.params.id;
-    const { StatusID } = req.body;
-    const sql = `UPDATE logis_parcel SET Status = ? WHERE ParcelID = ?`;
-    db.query(sql, [StatusID, id], (err, data) => {
+    const sql = `SELECT * FROM logis_parcel_status_history WHERE ParcelID = ?`;
+    db.query(sql, [id], (err, data) => {
         if(err) return res.json(err.message);
         return res.json(data);
     })
 })
 
-
-//////////parcel add status////////////////////    
 app.post('/parcel/status/:id', (req, res) => {
     const id = req.params.id;
     const { StatusID, Datetime ,Detail, BranchID, create_by } = req.body;
@@ -173,13 +82,13 @@ app.post('/parcel/status/:id', (req, res) => {
             if (err) return db.rollback(() => res.json({ error: err.message }));
             
             // หา sequence ล่าสุด
-            db.query(`SELECT COALESCE(MAX(Sequence), 0) as maxSeq FROM logis_shipping_status_list WHERE ParcelID = ?`, [id], (err, result) => {
+            db.query(`SELECT COALESCE(MAX(Sequence), 0) as maxSeq FROM logis_parcel_status_history WHERE ParcelID = ?`, [id], (err, result) => {
                 if (err) return db.rollback(() => res.json({ error: err.message }));
                 
                 const newSequence = result[0].maxSeq + 1;
                 
                 // เพิ่มประวัติสถานะ
-                db.query(`INSERT INTO logis_shipping_status_list (ParcelID, Sequence, DateTime, Detail, StatusID, BranchID, create_by)
+                db.query(`INSERT INTO logis_parcel_status_history (ParcelID, Sequence, DateTime, Detail, StatusID, BranchID, create_by)
                           VALUES (?, ?, ?, ?, ?, ?, ?)`, 
                     [id, newSequence, Datetime, Detail, StatusID, BranchID, create_by], (err, insertResult) => {
                     if (err) return db.rollback(() => res.json({ error: err.message }));
@@ -187,6 +96,52 @@ app.post('/parcel/status/:id', (req, res) => {
                     db.commit(err => {
                         if (err) return db.rollback(() => res.json({ error: err.message }));
                         res.json({ success: true, parcel: id, sequence: newSequence });
+                    });
+                });
+            });
+        });
+    });
+});
+
+app.get('/shipment/status/:id', (req, res) => {
+    const id = req.params.id;
+    const sql = `SELECT * FROM logis_shipment_status_history WHERE ShipmentID = ?`;
+    db.query(sql, [id], (err, data) => {
+        if(err) return res.json(err.message);
+        return res.json(data);
+    })
+})
+
+
+app.post('/shipment/status/:id', (req, res) => {
+    const id = req.params.id;
+    const { StatusID, DateTime, Detail, BranchID, create_by } = req.body;
+    
+    // ใช้เวลาปัจจุบันถ้าไม่ได้ระบุ
+    const timestamp = DateTime || new Date().toISOString().slice(0, 19).replace('T', ' ');
+    
+    db.beginTransaction(err => {
+        if (err) return res.json({ error: err.message });
+        
+        // อัพเดทสถานะหลัก
+        db.query(`UPDATE logis_shipment SET Status = ? WHERE ShipmentID = ?`, [StatusID, id], (err, updateResult) => {
+            if (err) return db.rollback(() => res.json({ error: err.message }));
+            
+            // หา sequence ล่าสุด
+            db.query(`SELECT COALESCE(MAX(Sequence), 0) as maxSeq FROM logis_shipment_status_history WHERE ShipmentID = ?`, [id], (err, result) => {
+                if (err) return db.rollback(() => res.json({ error: err.message }));
+                
+                const newSequence = result[0].maxSeq + 1;
+                
+                // เพิ่มประวัติสถานะ
+                db.query(`INSERT INTO logis_shipment_status_history (ShipmentID, Sequence, DateTime, Detail, StatusID, BranchID, create_by)
+                          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [id, newSequence, timestamp, Detail || '', StatusID, BranchID, create_by || 'system'], (err, insertResult) => {
+                    if (err) return db.rollback(() => res.json({ error: err.message }));
+                    
+                    db.commit(err => {
+                        if (err) return db.rollback(() => res.json({ error: err.message }));
+                        res.json({ success: true, shipment: id, sequence: newSequence });
                     });
                 });
             });
@@ -213,7 +168,38 @@ const getCoordinates = async (address) => {
     }
 };
 
-/////////upload////////////////////    
+const findShortestPath = async (locations) => {
+    try {
+        // ตรวจสอบข้อมูลที่รับมา
+        if (!Array.isArray(locations) || locations.length < 2) {
+            throw new Error('ต้องมีตำแหน่งอย่างน้อย 2 จุดในการหาเส้นทาง');
+        }
+
+        // แยกข้อมูลละติจูดและลองจิจูด
+        const lat = locations.map(loc => loc.lat);
+        const lon = locations.map(loc => loc.lon);
+
+        // สร้าง URL parameters และเรียกใช้ API
+        const params = new URLSearchParams();
+        params.append('key', process.env.LONGDO_API_KEY);
+        
+        // เพิ่มพารามิเตอร์ lon[] และ lat[] สำหรับแต่ละตำแหน่ง
+        lon.forEach(val => params.append('lon[]', val));
+        lat.forEach(val => params.append('lat[]', val));
+        
+        // ตั้งค่าโหมดและพารามิเตอร์อื่นๆ
+        params.append('mode', 't');     // โหมด traffic (เร็วที่สุดพร้อมข้อมูลจราจร)
+        params.append('cost', 'false'); // ไม่แสดงข้อมูลค่าใช้จ่าย
+        params.append('otsp', 'false'); // ไม่ใช้ OTSP (จุดเริ่มต้นและสิ้นสุดเดียวกัน)
+
+        const response = await axios.post('https://api.longdo.com/route-tsp-v2', params);
+        return response.data;
+    } catch (error) {
+        console.error("Error finding shortest path:", error);
+        return null;
+    }
+}
+
 app.post('/upload/parcel-csv', upload.single('file'), async (req, res) => {
     if (!req.file) return res.status(400).json({ message: "ไม่พบไฟล์" });
     const file = req.file;
@@ -222,12 +208,12 @@ app.post('/upload/parcel-csv', upload.single('file'), async (req, res) => {
 
     fs.createReadStream(file.path, 'utf-8')
         .pipe(csv({ parseNumbers: true, parseBooleans: true, trim: true }))
-        .on('data', (row) => {
+    .on('data', (row) => {
             const rowProcessingPromise = (async () => {
                 try {
                     const { Latitude, Longitude } = await getCoordinates(`${row['Address']}, ${row['Subdistrict']}, ${row['District']}, ${row['Province']} ${row['Postal_code']}`);
                     console.log(Latitude, Longitude);
-                    parcels.push([
+        parcels.push([
                         row['Width'], row['Height'],  row['Length'], row['Weight'], row['Price'],
                         row['Sender'], row['Sender_Tel'], row['Receiver'], row['Receiver_Tel'],
                         row['ShippingTypeID'], row['Address'], row['Subdistrict'], row['District'],
@@ -287,7 +273,7 @@ app.post('/upload/shipment-csv', upload.single('file'), (req, res) => {
             }
             // เก็บ shipment
             if (!shipments[row.ShipmentID]) {
-                shipments[row.ShipmentID] = [row.ShipmentID, row.Departure_time, row.Estimated_time, 
+                shipments[row.ShipmentID] = [row.ShipmentID, row.Departure_time, row.Estimated_arrival, 
                     row.Total_Weight, row.Total_Volume, row.OriginHubID, 
                     row.DestinationHubID, row.VehicleID, row.EmpID, user];
                 
@@ -302,10 +288,10 @@ app.post('/upload/shipment-csv', upload.single('file'), (req, res) => {
                 const seq = Object.keys(destMap).filter(k => k.startsWith(`${row.ShipmentID}-`)).length;
                 if(prevDestination === ""){
                     routes.push([row.ShipmentID, seq, row.Departure_time, 
-                        row.Estimated_time, row.OriginHubID, row.DestinationHubID, user]);
+                        row.Estimated_arrival, row.OriginHubID, row.DestinationHubID, user]);
                 }else if(prevDestination !== row.DestinationHubID){
                     routes.push([row.ShipmentID, seq, row.Departure_time, 
-                        row.Estimated_time, prevDestination, row.DestinationHubID, user]);
+                        row.Estimated_arrival, prevDestination, row.DestinationHubID, user]);
                 }
                 prevDestination = row.DestinationHubID;
             }
@@ -322,8 +308,8 @@ app.post('/upload/shipment-csv', upload.single('file'), (req, res) => {
             // ใช้ sequence ที่นับแยกตาม shipment
             shipList.push([row.ShipmentID, shipmentSequences[row.ShipmentID], '',
                 null, row.DestinationHubID, user]);
-        })
-        .on('end', () => {
+    })
+    .on('end', () => {
             if (Object.keys(shipments).length === 0) 
                 return handleError(null, "ไม่พบข้อมูล");
             
@@ -331,7 +317,7 @@ app.post('/upload/shipment-csv', upload.single('file'), (req, res) => {
                 if (err) return handleError(err, "เริ่ม transaction ล้มเหลว");
                 
                 // 1. เพิ่ม Shipment
-                db.query(`INSERT INTO logis_shipment(ShipmentID, Departure_time, Estimated_time, 
+                db.query(`INSERT INTO logis_shipment(ShipmentID, Departure_time, Estimated_arrival, 
                      Total_Weight, Total_Volume, OriginHubID, DestinationHubID,
                     VehicleID, EmpID, create_by) VALUES ? 
                     ON DUPLICATE KEY UPDATE ShipmentID = VALUES(ShipmentID)`, 
@@ -358,8 +344,8 @@ app.post('/upload/shipment-csv', upload.single('file'), (req, res) => {
                             if (err) return handleError(err, "เพิ่ม shipment list ล้มเหลว");
                             
                             // 4. เพิ่ม Shipment Route
-                            db.query(`INSERT INTO logis_shipment_route(ShipmentID, Sequence, Departure_time,
-                                    Estimated_time, OriginHubID, DestinationHubID,create_by) VALUES ?`, [routes], err => {
+                            db.query(`INSERT INTO logis_shipment_route(ShipmentID, Sequence, Date_Time,
+                                 Estimated_Time, OriginHubID, DestinationHubID,create_by) VALUES ?`, [routes], err => {
                                 
                                 if (err) return handleError(err, "เพิ่ม route ล้มเหลว");
                                 
@@ -385,38 +371,12 @@ app.post('/upload/shipment-csv', upload.single('file'), (req, res) => {
     }
 });
 
-/////////shipment////////////////////    
-app.get('/all-shipment', (req, res) => {
-    const sql = `
-    SELECT 
-        ls.ShipmentID, ls.Departure_time, ls.Estimated_time,ls.Total_Weight,
-        ls.OriginHubID,ls.DestinationHubID,ls.VehicleID,ls.EmpID,sl.ShipmentID,
-        sl.Sequence,sl.ParcelID, p.ParcelID, p.Width,p.Height,
-        p.Weight, p.Length,p.Address, p.Subdistrict, p.District,
-        p.Province,p.Postal_code, p.Status,ss.StatusName
-    FROM 
-        logis_shipment ls
-    INNER JOIN 
-        logis_shipment_list sl 
-    ON 
-        ls.ShipmentID = sl.ShipmentID
-    INNER JOIN 
-        logis_parcel p 
-    ON 
-        sl.ParcelID = p.ParcelID
-    LEFT JOIN
-    logis_shipment_status ss ON p.Status = ss.StatusID`;
-    db.query(sql, (err, data) => {
-        if(err) return res.json(err.message);
-        return res.json(data);
-    })
-})
 
 app.get('/shipment/:shipmentId', (req, res) => {
     const shipmentId = req.params.shipmentId;
     const sql = `
-                  SELECT  
-			s.ShipmentID,s.Departure_time, s.Estimated_time, s.Status, p.ParcelID, p.Weight,
+         SELECT  
+			s.ShipmentID,s.Departure_time, s.Estimated_time, s.Arrival_time, s.Status, p.ParcelID, p.Weight,
             p.Width, p.Height, p.Length,  p.Address, p.Subdistrict,p.District, p.Province,
             p.Postal_code, p.Sender, p.Sender_Tel,sl.DestinationHubID, b.BranchName,
             p.Receiver,p.Receiver_Tel,p.Status AS ParcelStatus
@@ -463,7 +423,7 @@ app.get('/shipment/:shipmentId', (req, res) => {
     });
 })
 
-/////////shipment route////////////////////    
+
 app.get('/shipment-route/:shipmentId', (req, res) => {
     const shipmentId = req.params.shipmentId;
     const sql = `SELECT 
@@ -489,6 +449,98 @@ app.get('/shipment-route/:shipmentId', (req, res) => {
         return res.json(data);
     })
 })
+
+
+app.put('/shipment/:shipmentId/route/:sequence?', (req, res) => {
+    const { shipmentId, sequence } = req.params;
+    const updateData = req.body;
+    
+    // กรองฟิลด์ที่อนุญาตให้อัพเดต
+    const allowedFields = ['Date_Time', 'Distance', 'Duration', 'Actual_Time', 'OriginHubID', 'DestinationHubID', 'Status'];
+    const updates = Object.fromEntries(
+        Object.entries(updateData).filter(([key]) => allowedFields.includes(key))
+    );
+    
+    if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "ไม่มีข้อมูลสำหรับอัพเดต" });
+    }
+    
+    // ถ้ามี Date_Time และ Duration ให้คำนวณ Estimated_Time
+    if (updates.Date_Time && updates.Duration) {
+        db.query(
+            `SELECT DATE_ADD(?, INTERVAL ? SECOND) AS est_time`, 
+            [updates.Date_Time, updates.Duration],
+            (err, result) => {
+                if (err) return res.status(500).json({ message: err.message });
+                updates.Estimated_Time = result[0].est_time;
+                executeUpdate();
+            }
+        );
+    } else {
+        executeUpdate();
+    }
+    
+    function executeUpdate() {
+        const setClause = Object.keys(updates).map(f => `${f} = ?`).join(', ');
+        const values = [...Object.values(updates), shipmentId];
+        
+        let sql = `UPDATE logis_shipment_route SET ${setClause} WHERE ShipmentID = ?`;
+        if (sequence) {
+            sql += ` AND Sequence = ?`;
+            values.push(sequence);
+        }
+        
+        db.query(sql, values, (err, result) => {
+            if (err) return res.status(500).json({ message: err.message });
+            res.json({
+                success: result.affectedRows > 0,
+                affectedRows: result.affectedRows
+            });
+        });
+    }
+ });
+
+
+app.get('/all-shipment', (req, res) => {
+    const sql = `
+SELECT 
+        ls.ShipmentID, ls.Departure_time, ls.Estimated_time, ls.Arrival_time,ls.Total_Weight,
+        ls.OriginHubID,ls.DestinationHubID,ls.VehicleID,ls.EmpID,sl.ShipmentID,
+        sl.Sequence,sl.ParcelID, p.ParcelID, p.Width,p.Height,
+        p.Weight, p.Length,p.Address, p.Subdistrict, p.District,
+        p.Province,p.Postal_code, p.Status,ss.StatusName
+FROM 
+	logis_shipment ls
+INNER JOIN 
+    logis_shipment_list sl 
+ON 
+    ls.ShipmentID = sl.ShipmentID
+INNER JOIN 
+	logis_parcel p 
+ON 
+	sl.ParcelID = p.ParcelID
+LEFT JOIN
+    logis_shipment_status ss ON p.Status = ss.StatusID`;
+    db.query(sql, (err, data) => {
+        if(err) return res.json(err.message);
+        return res.json(data);
+    })
+})
+
+app.put('/shipment-status/:shipmentId', (req, res) => {
+    const shipmentId = req.params.shipmentId;
+    const { StatusID } = req.body;
+
+    // ใช้ SQL สำหรับอัปเดตสถานะของพัสดุทั้งหมดใน shipment
+    const sql = `UPDATE logis_parcel 
+                 SET Status = ? 
+                 WHERE ParcelID IN (SELECT ParcelID FROM logis_shipment_list WHERE ShipmentID = ?)`;
+
+    db.query(sql, [StatusID, shipmentId], (err, data) => {
+        if (err) return res.status(500).json({ error: err.message });
+        return res.json({ message: "Parcel status updated successfully", data });
+    });
+});
 
 app.get('/shipment-route-index/:shipmentId/:sequence?', (req, res) => {
     const shipmentId = req.params.shipmentId;
@@ -527,75 +579,39 @@ app.get('/shipment-route-index/:shipmentId/:sequence?', (req, res) => {
     });
 });
 
-/////////shipment route update////////////////////    
-app.put('/shipment/:shipmentId/route/:sequence?', (req, res) => {
-    const { shipmentId, sequence } = req.params;
-    const updateData = req.body;
-    
-    // กรองฟิลด์ที่อนุญาตให้อัพเดต
-    const allowedFields = ['Departure_time', 'Distance', 'Duration', 'Actual_Time', 'OriginHubID', 'DestinationHubID', 'Status'];
-    const updates = Object.fromEntries(
-        Object.entries(updateData).filter(([key]) => allowedFields.includes(key))
-    );
-    
-    if (Object.keys(updates).length === 0) {
-        return res.status(400).json({ message: "ไม่มีข้อมูลสำหรับอัพเดต" });
-    }
-    
-    // ถ้ามี Date_Time และ Duration ให้คำนวณ Estimated_Time
-    if (updates.Departure_time && updates.Duration) {
-        db.query(
-            `SELECT DATE_ADD(?, INTERVAL ? SECOND) AS est_time`, 
-            [updates.Departure_time, updates.Duration],
-            (err, result) => {
-                if (err) return res.status(500).json({ message: err.message });
-                updates.Estimated_time = result[0].est_time;
-                executeUpdate();
-            }
-        );
-    } else {
-        executeUpdate();
-    }
-    
-    function executeUpdate() {
-        const setClause = Object.keys(updates).map(f => `${f} = ?`).join(', ');
-        const values = [...Object.values(updates), shipmentId];
-        
-        let sql = `UPDATE logis_shipment_route SET ${setClause} WHERE ShipmentID = ?`;
-        if (sequence) {
-            sql += ` AND Sequence = ?`;
-            values.push(sequence);
-        }
-        
-        db.query(sql, values, (err, result) => {
-            if (err) return res.status(500).json({ message: err.message });
-            res.json({
-                success: result.affectedRows > 0,
-                affectedRows: result.affectedRows
-            });
-        });
-    }
- });
+app.get('/all-branch', (req, res) => {
+    const sql = `SELECT
+        BranchCode, 
+        BranchName, 
+        Tel,
+        Latitude, 
+        Longitude
+    FROM logis_branch`;
+    db.query(sql, (err, data) => {
+        if(err) return res.json(err.message);
+        return res.json(data);
+    })
+})
 
- 
-
-
-app.put('/shipment-status/:shipmentId', (req, res) => {
-    const shipmentId = req.params.shipmentId;
-    const { StatusID } = req.body;
-
-    // ใช้ SQL สำหรับอัปเดตสถานะของพัสดุทั้งหมดใน shipment
-    const sql = `UPDATE logis_parcel 
-                 SET Status = ? 
-                 WHERE ParcelID IN (SELECT ParcelID FROM logis_shipment_list WHERE ShipmentID = ?)`;
-
-    db.query(sql, [StatusID, shipmentId], (err, data) => {
-        if (err) return res.status(500).json({ error: err.message });
-        return res.json({ message: "Parcel status updated successfully", data });
-    });
-});
-
-
+app.get('/parcel-status-list/:parcelId', (req, res) => {
+    const parcelId = req.params.parcelId;
+    const sql = `SELECT 
+        sl.ParcelID,
+        sl.Sequence,
+        sl.DateTime,
+        ss.AltName,
+        b.BranchName
+    FROM logis_parcel_status_history sl
+    LEFT JOIN 
+    logis_shipment_status ss ON sl.StatusID = ss.StatusID
+    LEFT JOIN
+    logis_branch b ON sl.BranchID = b.BranchCode
+    WHERE sl.ParcelID = ?`;
+    db.query(sql, [parcelId], (err, data) => {
+        if(err) return res.json(err.message);
+        return res.json(data);
+    })
+})
 
 app.listen(8081, () => {
     console.log("listening");
