@@ -29,6 +29,9 @@ const BranchMap = () => {
  const [updating, setUpdating] = useState(false);
  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
  const [errorMessage, setErrorMessage] = useState('');
+ const [isJourneyStarted, setIsJourneyStarted] = useState(false);
+ const [endTime, setEndTime] = useState('');
+ const [openEndDialog, setOpenEndDialog] = useState(false);
 
  useEffect(() => {
    if (location.state?.shipmentId) fetchRouteData();
@@ -109,22 +112,65 @@ const BranchMap = () => {
 
    try {
      setUpdating(true);
-
-     const statusCode = parseInt(routeId) === 1 ? 'SS01' : 'SS04'; // SS01=เริ่มเดินทาง, SS04=กำลังเดินทาง
+     const statusCode = parseInt(routeId) === 1 ? 'SS02' : 'SS04';
      
      await updateShipmentRouteByIndex(shipmentId, routeId, {
        Distance: Distance,
        Duration: Duration,
        Departure_time: startTime,
-
+       Status: true
      });
   
      await updateShipmentStatusByIndex(
-       shipmentId, statusCode, startTime, routeData.OriginHubID
+       shipmentId,
+       statusCode,
+       startTime,
+       "",
+       routeData.OriginHubID
+       
      );
      
      setOpenDialog(false);
      setStartTime('');
+     setIsJourneyStarted(true);
+     fetchRouteData();
+   } catch (error) {
+     console.error('Error updating route:', error);
+     setErrorMessage('เกิดข้อผิดพลาดในการอัพเดทข้อมูลเส้นทาง');
+     setErrorDialogOpen(true);
+   } finally {
+     setUpdating(false);
+   }
+ };
+
+ const handleEndJourney = async () => {
+   if (!endTime) {
+     setErrorMessage('กรุณากรอกเวลาสิ้นสุดการเดินทาง');
+     setErrorDialogOpen(true);
+     return;
+   }
+
+   try {
+     setUpdating(true);
+     const statusCode = 'SS03'; // สถานะสิ้นสุดการเดินทาง
+     
+     await updateShipmentRouteByIndex(shipmentId, routeId, {
+       Arrival_time: endTime,
+       Status: false
+     });
+  
+     await updateShipmentStatusByIndex(
+       shipmentId,
+       statusCode,
+       endTime,
+       "",
+       routeData.DestinationHubID
+       
+     );
+     
+     setOpenEndDialog(false);
+     setEndTime('');
+     setIsJourneyStarted(false);
      fetchRouteData();
    } catch (error) {
      console.error('Error updating route:', error);
@@ -159,13 +205,23 @@ const BranchMap = () => {
          <Paper sx={{ p: 3 }}>
            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
              <Typography variant="h6">ข้อมูลเส้นทาง</Typography>
-             <Button
-               variant="contained"
-               onClick={() => setOpenDialog(true)}
-               disabled={!routeDistance || !routeDuration}
-             >
-               เริ่มเดินทาง
-             </Button>
+             {!isJourneyStarted ? (
+               <Button
+                 variant="contained"
+                 onClick={() => setOpenDialog(true)}
+                 disabled={!routeDistance || !routeDuration}
+               >
+                 เริ่มเดินทาง
+               </Button>
+             ) : (
+               <Button
+                 variant="contained"
+                 color="secondary"
+                 onClick={() => setOpenEndDialog(true)}
+               >
+                 สิ้นสุดการเดินทาง
+               </Button>
+             )}
            </Box>
            <Grid container spacing={2}>
              <Grid item xs={12} sm={6}>
@@ -187,6 +243,22 @@ const BranchMap = () => {
              <Grid item xs={12}>
                <Typography variant="subtitle2" color="text.secondary">ลำดับเส้นทาง</Typography>
                <Typography>{routeData?.Sequence || '-'}</Typography>
+             </Grid>
+             <Grid item xs={12}>
+               <Typography variant="subtitle2" color="text.secondary">เวลาเริ่มเดินทาง</Typography>
+               <Typography>{routeData?.Departure_time ? new Date(routeData.Departure_time).toLocaleString('th-TH') : 'ยังไม่ได้เริ่มเดินทาง'}</Typography>
+             </Grid>
+             <Grid item xs={12}>
+               <Typography variant="subtitle2" color="text.secondary">เวลาที่คาดว่าจะถึง</Typography>
+               <Typography>
+                 {routeData?.Departure_time && routeDuration 
+                   ? new Date(new Date(routeData.Departure_time).getTime() + (parseInt(routeDuration) * 60 * 1000)).toLocaleString('th-TH')
+                   : 'ไม่สามารถคำนวณได้'}
+               </Typography>
+             </Grid>
+             <Grid item xs={12}>
+               <Typography variant="subtitle2" color="text.secondary">เวลาถึงจริง</Typography>
+               <Typography>{routeData?.Arrival_time ? new Date(routeData.Arrival_time).toLocaleString('th-TH') : 'ยังไม่ถึงปลายทาง'}</Typography>
              </Grid>
            </Grid>
          </Paper>
@@ -255,6 +327,24 @@ const BranchMap = () => {
        <DialogActions>
          <Button onClick={() => setOpenDialog(false)}>ยกเลิก</Button>
          <Button onClick={handleStartJourney} variant="contained" disabled={updating || !startTime}>
+           {updating ? 'กำลังอัพเดท...' : 'ยืนยัน'}
+         </Button>
+       </DialogActions>
+     </Dialog>
+
+     {/* Dialog สำหรับกรอกเวลาสิ้นสุดการเดินทาง */}
+     <Dialog open={openEndDialog} onClose={() => setOpenEndDialog(false)}>
+       <DialogTitle>สิ้นสุดการเดินทาง</DialogTitle>
+       <DialogContent>
+         <TextField
+           autoFocus margin="dense" label="เวลาสิ้นสุดการเดินทาง" type="datetime-local"
+           fullWidth value={endTime} onChange={e => setEndTime(e.target.value)}
+           InputLabelProps={{ shrink: true }}
+         />
+       </DialogContent>
+       <DialogActions>
+         <Button onClick={() => setOpenEndDialog(false)}>ยกเลิก</Button>
+         <Button onClick={handleEndJourney} variant="contained" disabled={updating || !endTime}>
            {updating ? 'กำลังอัพเดท...' : 'ยืนยัน'}
          </Button>
        </DialogActions>

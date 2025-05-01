@@ -188,23 +188,32 @@ const ShipmentDetails = () => {
   const getStatusText = (status) => {
     if (!status) return 'อยู่ระหว่างดำเนินการ';
     const statusItem = statusList.find(s => s.StatusID === status);
-    return statusItem ? statusItem.StatusName : 'อยู่ระหว่างดำเนินการ';
+    return statusItem ? statusItem.AltName : 'อยู่ระหว่างดำเนินการ';
   };
 
   // แปลงสถานะเป็นสี
-  const getStatusColor = (status) => {
-    if (!status) return 'default';
-    const statusItem = statusList.find(s => s.StatusID === status);
-    if (!statusItem) return 'default';
+ 
+  const getStatusColor = (statusName) => {
+    if (!statusName) return 'default';
     
-    switch (statusItem.StatusName) {
-      case 'รอดำเนินการ': return 'warning';
-      case 'กำลังจัดส่ง': return 'info';
-      case 'จัดส่งสำเร็จ': return 'success';
-      case 'ยกเลิก': return 'error';
-      default: return 'default';
+    switch (statusName) {
+      case 'เริ่มจัดเตรียมสินค้า':
+        return 'warning';
+      case 'ออกจากสำนักงานใหญ่':
+        return 'info';
+      case 'ถึงศูนย์กระจายสินค้า':
+        return 'info';
+      case 'ออกจากศูนย์กระจายสินค้า':
+        return 'info';
+      case 'เสร็จสิ้น':
+        return 'success';
+      case 'ยกเลิก':
+        return 'error';
+      default:
+        return 'default';
     }
   };
+
 
   // จัดการการเลือกพัสดุ
   const handleParcelSelect = (parcelId) => {
@@ -348,7 +357,7 @@ const ShipmentDetails = () => {
                   เวลาที่คาดว่าจะถึง
                 </Typography>
                 <Typography>
-                  {new Date(shipment.Estimated_arrival).toLocaleString('th-TH')}
+                  {new Date(shipment.Estimated_time).toLocaleString('th-TH')}
                 </Typography>
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -502,7 +511,7 @@ const ShipmentDetails = () => {
                             <TableCell align="center">
                               <Chip 
                                 label={getStatusText(parcel.Status)} 
-                                color={getStatusColor(parcel.Status)}
+                                color={getStatusColor(getStatusText(parcel.Status))}
                                 size="small"
                                 sx={{ fontWeight: 'medium' }}
                               />
@@ -565,7 +574,7 @@ const ShipmentDetails = () => {
               >
                 {statusList.map((status) => (
                   <MenuItem key={status.StatusID} value={status.StatusID}>
-                    {status.StatusName}
+                    {status.AltName}
                   </MenuItem>
                 ))}
               </Select>

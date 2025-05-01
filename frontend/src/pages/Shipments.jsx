@@ -66,7 +66,7 @@ const Shipments = () => {
           Province: item.Province,
           Postal_code: item.Postal_code,
           Region: item.Region,
-          StatusName: item.StatusName
+          StatusName: item.AltName
         });
         return acc;
       }, {});
@@ -93,7 +93,7 @@ const Shipments = () => {
   const getStatusText = (status) => {
     if (!status) return 'รอดำเนินการ';
     const statusItem = statusList.find(s => s.StatusID === status);
-    return statusItem ? statusItem.StatusName : 'รอดำเนินการ';
+    return statusItem ? statusItem.AltName : 'รอดำเนินการ';
   };
 
   // แปลงสถานะเป็นสี
@@ -101,17 +101,17 @@ const Shipments = () => {
     if (!statusName) return 'default';
     
     switch (statusName) {
-      case 'Preparing Shipment':
+      case 'เริ่มจัดเตรียมสินค้า':
         return 'warning';
-      case 'Departed Main Branch':
+      case 'ออกจากสำนักงานใหญ่':
         return 'info';
-      case 'Departed DC':
+      case 'ถึงศูนย์กระจายสินค้า':
         return 'info';
-      case 'Arrived DC':
+      case 'ออกจากศูนย์กระจายสินค้า':
+        return 'info';
+      case 'เสร็จสิ้น':
         return 'success';
-      case 'Completed':
-        return 'success';
-      case 'Cancelled':
+      case 'ยกเลิก':
         return 'error';
       default:
         return 'default';
@@ -169,7 +169,7 @@ const Shipments = () => {
                       <TableCell>
                               <Chip 
                                 label={getStatusText(shipment.Status)} 
-                                color={getStatusColor(shipment.Status)}
+                                color={getStatusColor(getStatusText(shipment.Status))}
                                 size="small"
                               />
                       </TableCell>

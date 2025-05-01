@@ -17,7 +17,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Button
+  Button,
+  TextField
 } from '@mui/material';
 import { getAllShipments } from '../api';
 
@@ -49,7 +50,7 @@ const Reports = () => {
 
   useEffect(() => {
     fetchShipments();
-    fetchStatusList();
+    // fetchStatusList();
   }, []);
 
   // กรองข้อมูลตามสถานะและช่วงวันที่
@@ -66,16 +67,44 @@ const Reports = () => {
   });
 
   // คำนวณสถิติ
+  // const statistics = {
+  //   totalShipments: filteredShipments.length,
+  //   totalParcels: filteredShipments.reduce((sum, shipment) => sum + shipment.parcels.length, 0),
+  //   totalWeight: filteredShipments.reduce((sum, shipment) => 
+  //     sum + shipment.parcels.reduce((parcelSum, parcel) => parcelSum + parcel.Weight, 0), 0),
+  //   averageWeight: filteredShipments.length > 0 ? 
+  //     filteredShipments.reduce((sum, shipment) => 
+  //       sum + shipment.parcels.reduce((parcelSum, parcel) => parcelSum + parcel.Weight, 0), 0) / 
+  //     filteredShipments.reduce((sum, shipment) => sum + shipment.parcels.length, 0) : 0
+  // };
   const statistics = {
     totalShipments: filteredShipments.length,
-    totalParcels: filteredShipments.reduce((sum, shipment) => sum + shipment.parcels.length, 0),
-    totalWeight: filteredShipments.reduce((sum, shipment) => 
-      sum + shipment.parcels.reduce((parcelSum, parcel) => parcelSum + parcel.Weight, 0), 0),
-    averageWeight: filteredShipments.length > 0 ? 
-      filteredShipments.reduce((sum, shipment) => 
-        sum + shipment.parcels.reduce((parcelSum, parcel) => parcelSum + parcel.Weight, 0), 0) / 
-      filteredShipments.reduce((sum, shipment) => sum + shipment.parcels.length, 0) : 0
+    totalParcels: filteredShipments.reduce(
+      (sum, shipment) => sum + (shipment.parcels?.length || 0),
+      0
+    ),
+    totalWeight: filteredShipments.reduce(
+      (sum, shipment) => sum + (shipment.parcels?.reduce(
+        (parcelSum, parcel) => parcelSum + (parcel?.Weight || 0),
+        0
+      ) || 0),
+      0
+    ),
+    averageWeight: filteredShipments.length > 0
+      ? filteredShipments.reduce(
+          (sum, shipment) => sum + (shipment.parcels?.reduce(
+            (parcelSum, parcel) => parcelSum + (parcel?.Weight || 0),
+            0
+          ) || 0),
+          0
+        ) /
+        filteredShipments.reduce(
+          (sum, shipment) => sum + (shipment.parcels?.length || 0),
+          0
+        )
+      : 0
   };
+  
 
   if (loading) {
     return (
@@ -189,9 +218,13 @@ const Reports = () => {
                     <TableCell>
                       {new Date(shipment.Departure_time).toLocaleDateString('th-TH')}
                     </TableCell>
-                    <TableCell>{shipment.parcels.length}</TableCell>
-                    <TableCell>
+                    {/* <TableCell>{shipment.parcels.length}</TableCell> */}
+                    <TableCell>{shipment.parcels?.length || 0  }</TableCell>
+                    {/* <TableCell>
                       {shipment.parcels.reduce((sum, parcel) => sum + parcel.Weight, 0).toFixed(2)} กก.
+                    </TableCell> */}
+                    <TableCell>
+                      {(shipment.parcels?.reduce((sum, parcel) => sum + (parcel.Weight || 0), 0)) || 0} กก.
                     </TableCell>
                     <TableCell>
                       {statusList.find(s => s.StatusID === shipment.Status)?.StatusName || 'ไม่ทราบสถานะ'}

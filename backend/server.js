@@ -258,6 +258,7 @@ app.post('/upload/shipment-csv', upload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).json({message: "ไม่พบไฟล์"});
     
     const shipments = {}, parcels = [], shipList = [], routes = [];
+    const statusHistory = []; // เพิ่มอาร์เรย์สำหรับเก็บข้อมูลประวัติสถานะ
     const destMap = {};
     const user = req.session?.username || 'system';
     let prevDestination = "";
@@ -273,12 +274,23 @@ app.post('/upload/shipment-csv', upload.single('file'), (req, res) => {
             }
             // เก็บ shipment
             if (!shipments[row.ShipmentID]) {
-                shipments[row.ShipmentID] = [row.ShipmentID, row.Departure_time, row.Estimated_arrival, 
+                shipments[row.ShipmentID] = [row.ShipmentID, row.Departure_time, row.Estimated_time, 
                     row.Total_Weight, row.Total_Volume, row.OriginHubID, 
                     row.DestinationHubID, row.VehicleID, row.EmpID, user];
                 
                 // เริ่มต้นนับ sequence สำหรับ shipment นี้
                 shipmentSequences[row.ShipmentID] = 0;
+                
+                // เพิ่มข้อมูลสำหรับประวัติสถานะ - ใช้ sequence เป็น 1 สำหรับสถานะแรก
+                statusHistory.push([
+                    row.ShipmentID,     // ShipmentID
+                    1,                   // Sequence
+                    row.Departure_time,  // DateTime (ใช้ Departure_time ตามที่กำหนด)
+                    '',                  // Detail (ไม่มีรายละเอียด)
+                    'SS01',              // StatusID (ใช้ค่า SS01 ตามที่กำหนด)
+                    row.OriginHubID,     // BranchID (ใช้ OriginHubID เป็น BranchID)
+                    user                 // create_by
+                ]);
             }
             
             // สร้าง route ที่ไม่ซ้ำ
@@ -288,10 +300,10 @@ app.post('/upload/shipment-csv', upload.single('file'), (req, res) => {
                 const seq = Object.keys(destMap).filter(k => k.startsWith(`${row.ShipmentID}-`)).length;
                 if(prevDestination === ""){
                     routes.push([row.ShipmentID, seq, row.Departure_time, 
-                        row.Estimated_arrival, row.OriginHubID, row.DestinationHubID, user]);
+                        row.Estimated_time, row.OriginHubID, row.DestinationHubID, user]);
                 }else if(prevDestination !== row.DestinationHubID){
                     routes.push([row.ShipmentID, seq, row.Departure_time, 
-                        row.Estimated_arrival, prevDestination, row.DestinationHubID, user]);
+                        row.Estimated_time, prevDestination, row.DestinationHubID, user]);
                 }
                 prevDestination = row.DestinationHubID;
             }
@@ -317,7 +329,7 @@ app.post('/upload/shipment-csv', upload.single('file'), (req, res) => {
                 if (err) return handleError(err, "เริ่ม transaction ล้มเหลว");
                 
                 // 1. เพิ่ม Shipment
-                db.query(`INSERT INTO logis_shipment(ShipmentID, Departure_time, Estimated_arrival, 
+                db.query(`INSERT INTO logis_shipment(ShipmentID, Departure_time, Estimated_time, 
                      Total_Weight, Total_Volume, OriginHubID, DestinationHubID,
                     VehicleID, EmpID, create_by) VALUES ? 
                     ON DUPLICATE KEY UPDATE ShipmentID = VALUES(ShipmentID)`, 
@@ -344,17 +356,26 @@ app.post('/upload/shipment-csv', upload.single('file'), (req, res) => {
                             if (err) return handleError(err, "เพิ่ม shipment list ล้มเหลว");
                             
                             // 4. เพิ่ม Shipment Route
-                            db.query(`INSERT INTO logis_shipment_route(ShipmentID, Sequence, Date_Time,
-                                 Estimated_Time, OriginHubID, DestinationHubID,create_by) VALUES ?`, [routes], err => {
+                            db.query(`INSERT INTO logis_shipment_route(ShipmentID, Sequence, Departure_time,
+                                 Estimated_Time, OriginHubID, DestinationHubID, create_by) VALUES ?`, [routes], err => {
                                 
                                 if (err) return handleError(err, "เพิ่ม route ล้มเหลว");
                                 
-                                db.commit(err => {
-                                    if (err) return handleError(err, "commit ล้มเหลว");
-                                    fs.unlink(req.file.path, () => {});
-                                    res.json({message: "สำเร็จ", stats: {
-                                        shipments: Object.keys(shipments).length, 
-                                        parcels: parcels.length, routes: routes.length}});
+                                // 5. เพิ่ม Shipment Status History
+                                db.query(`INSERT INTO logis_shipment_status_history(ShipmentID, Sequence, DateTime,
+                                     Detail, StatusID, BranchID, create_by) VALUES ?`, [statusHistory], err => {
+                                    
+                                    if (err) return handleError(err, "เพิ่มประวัติสถานะล้มเหลว");
+                                    
+                                    db.commit(err => {
+                                        if (err) return handleError(err, "commit ล้มเหลว");
+                                        fs.unlink(req.file.path, () => {});
+                                        res.json({message: "สำเร็จ", stats: {
+                                            shipments: Object.keys(shipments).length, 
+                                            parcels: parcels.length, 
+                                            routes: routes.length,
+                                            statusHistory: statusHistory.length}});
+                                    });
                                 });
                             });
                         });
@@ -376,7 +397,7 @@ app.get('/shipment/:shipmentId', (req, res) => {
     const shipmentId = req.params.shipmentId;
     const sql = `
          SELECT  
-			s.ShipmentID,s.Departure_time, s.Estimated_time, s.Arrival_time, s.Status, p.ParcelID, p.Weight,
+			s.ShipmentID, s.Departure_time, s.Estimated_time, s.Arrival_time, s.Status, p.ParcelID, p.Weight,
             p.Width, p.Height, p.Length,  p.Address, p.Subdistrict,p.District, p.Province,
             p.Postal_code, p.Sender, p.Sender_Tel,sl.DestinationHubID, b.BranchName,
             p.Receiver,p.Receiver_Tel,p.Status AS ParcelStatus
@@ -430,6 +451,9 @@ app.get('/shipment-route/:shipmentId', (req, res) => {
                     ShipmentID ,
                     Sequence ,
                     OriginHubID,
+                    Departure_time,
+                    Estimated_time,
+                    Arrival_time,
                     bo.BranchName AS OriginHubName,
                     bo.Latitude AS OriginLatitude,
                     bo.Longitude AS OriginLongitude,
@@ -456,7 +480,7 @@ app.put('/shipment/:shipmentId/route/:sequence?', (req, res) => {
     const updateData = req.body;
     
     // กรองฟิลด์ที่อนุญาตให้อัพเดต
-    const allowedFields = ['Date_Time', 'Distance', 'Duration', 'Actual_Time', 'OriginHubID', 'DestinationHubID', 'Status'];
+    const allowedFields = ['Date_Time', 'Distance', 'Duration', 'Arrival_time', 'OriginHubID', 'DestinationHubID', 'Status'];
     const updates = Object.fromEntries(
         Object.entries(updateData).filter(([key]) => allowedFields.includes(key))
     );
@@ -508,7 +532,7 @@ SELECT
         ls.OriginHubID,ls.DestinationHubID,ls.VehicleID,ls.EmpID,sl.ShipmentID,
         sl.Sequence,sl.ParcelID, p.ParcelID, p.Width,p.Height,
         p.Weight, p.Length,p.Address, p.Subdistrict, p.District,
-        p.Province,p.Postal_code, p.Status,ss.StatusName
+        p.Province,p.Postal_code, p.Status,ss.AltName
 FROM 
 	logis_shipment ls
 INNER JOIN 
@@ -551,6 +575,9 @@ app.get('/shipment-route-index/:shipmentId/:sequence?', (req, res) => {
             ShipmentID ,
             Sequence ,
             OriginHubID,
+            Departure_time,
+            Estimated_time,
+            Arrival_time,
             bo.BranchName AS OriginHubName,
             bo.Latitude AS OriginLatitude,
             bo.Longitude AS OriginLongitude,
