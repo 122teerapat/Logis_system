@@ -61,6 +61,17 @@ const ShipmentDetails = () => {
       
       // ตั้งค่าสถานะ
       if (shipmentRes.data && shipmentRes.data.length > 0) {
+        console.log('Shipment Data:', shipmentRes.data[0]);
+        console.log('Employee Data:', {
+          Fname: shipmentRes.data[0].Fname,
+          Lname: shipmentRes.data[0].Lname,
+          EmpID: shipmentRes.data[0].EmpID
+        });
+        console.log('Vehicle Data:', {
+          VehicleID: shipmentRes.data[0].VehicleID,
+          TypeName: shipmentRes.data[0].TypeName,
+          Fuel_efficiency: shipmentRes.data[0].Fuel_efficiency
+        });
         setShipment(shipmentRes.data[0]);
       } else {
         setError('ไม่พบข้อมูลการจัดส่ง');
@@ -374,6 +385,44 @@ const ShipmentDetails = () => {
                 </Typography>
                 <Typography>
                   {routeDuration || 'กำลังโหลดข้อมูล...'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  พนักงานขับรถ
+                </Typography>
+                <Typography>
+                  {shipment.EmpID && shipment.Fname && shipment.Lname ? 
+                    `${shipment.EmpID} - ${shipment.Fname} ${shipment.Lname}` : 
+                    'ยังไม่ได้ระบุพนักงาน'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  ยานพาหนะ
+                </Typography>
+                <Typography>
+                  {shipment.VehicleID && shipment.TypeName ? 
+                    `${shipment.TypeName} (${shipment.VehicleID})` : 
+                    'ยังไม่ได้ระบุยานพาหนะ'}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  ปริมาณน้ำมันที่ต้องใช้
+                </Typography>
+                <Typography>
+                  {routeDistance && shipment.Fuel_efficiency ? (
+                    (() => {
+                      const distance = parseFloat(routeDistance.replace(/[^\d.]/g, ''));
+                      const fuelEfficiency = parseFloat(shipment.Fuel_efficiency);
+                      if (!isNaN(distance) && !isNaN(fuelEfficiency)) {
+                        const fuelNeeded = (distance / fuelEfficiency).toFixed(2);
+                        return `${fuelNeeded} ลิตร`;
+                      }
+                      return 'ไม่สามารถคำนวณได้';
+                    })()
+                  ) : 'กำลังโหลดข้อมูล...'}
                 </Typography>
               </Grid>
               <Grid item xs={12}>

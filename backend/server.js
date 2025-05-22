@@ -400,11 +400,14 @@ app.get('/shipment/:shipmentId', (req, res) => {
 			s.ShipmentID, s.Departure_time, s.Estimated_time, s.Arrival_time, s.Status, p.ParcelID, p.Weight,
             p.Width, p.Height, p.Length,  p.Address, p.Subdistrict,p.District, p.Province,
             p.Postal_code, p.Sender, p.Sender_Tel,sl.DestinationHubID, b.BranchName,
-            p.Receiver,p.Receiver_Tel,p.Status AS ParcelStatus
+            p.Receiver,p.Receiver_Tel,p.Status AS ParcelStatus , s.EmpID , e.Fname , e.Lname , s.VehicleID , vt.TypeName , vt.Fuel_efficiency
         FROM logis_shipment s
         LEFT JOIN logis_shipment_list sl ON s.ShipmentID = sl.ShipmentID
         LEFT JOIN logis_parcel p ON sl.ParcelID = p.ParcelID 
         LEFT JOIN logis_branch b ON sl.DestinationHubID = b.BranchCode
+        LEFT JOIN logis_employee e ON s.EmpID = e.EmpID
+        LEFT JOIN logis_vehicle v ON s.VehicleID = v.VehicleID
+        LEFT JOIN logis_vehicle_type vt ON v.VehicleTypeID = vt.VehicleTypeID
         WHERE s.ShipmentID = ?
         ORDER BY DestinationHubID`;
 
@@ -416,7 +419,14 @@ app.get('/shipment/:shipmentId', (req, res) => {
             const shipment = {
                 ShipmentID: data[0].ShipmentID,
                 Departure_time: data[0].Departure_time,
-                Estimated_arrival: data[0].Estimated_arrival,
+                Estimated_time: data[0].Estimated_time,
+                Arrival_time: data[0].Arrival_time,
+                EmpID: data[0].EmpID,
+                Fname: data[0].Fname,
+                Lname: data[0].Lname,
+                VehicleID: data[0].VehicleID,
+                TypeName: data[0].TypeName,
+                Fuel_efficiency: data[0].Fuel_efficiency,
                 Status: data[0].Status,
                 parcels: data
                     .filter(row => row.ParcelID) // กรองเฉพาะรายการที่มี ParcelID
