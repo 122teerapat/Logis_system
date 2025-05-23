@@ -172,6 +172,9 @@ const Reports = () => {
           origin: route.OriginHubName,
           destination: route.DestinationHubName,
           expectedDuration: routeExpectedDuration,
+          routeDeparture: routeDeparture,
+          routeEstimated: routeEstimated,
+          routeArrival: routeArrival,
           actualDuration: routeActualDuration,
           timeDifference: routeTimeDifference,
           isCompleted: !!route.Arrival_time,
@@ -388,66 +391,12 @@ const Reports = () => {
         {/* แท็บสำหรับรายงานแต่ละประเภท */}
         <Paper sx={{ mb: 3 }}>
           <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
-            <Tab label="ภาพรวม" />
             <Tab label="การวิเคราะห์เวลา" />
             <Tab label="รายละเอียดแต่ละเส้นทาง" />
           </Tabs>
 
-          {/* แท็บภาพรวม */}
-          {tabValue === 0 && (
-            <Box sx={{ p: 3 }}>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="h6" gutterBottom>
-                    การเปรียบเทียบเวลาคาดหวังกับเวลาจริง
-                  </Typography>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={performanceChartData.slice(0, 10)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="shipmentId" />
-                      <YAxis />
-                      <Tooltip 
-                        formatter={(value, name) => [
-                          `${value} ชั่วโมง`, 
-                          name === 'expected' ? 'เวลาคาดหวัง' : 'เวลาจริง'
-                        ]}
-                      />
-                      <Legend />
-                      <Bar dataKey="expected" fill="#8884d8" name="เวลาคาดหวัง" />
-                      <Bar dataKey="actual" fill="#82ca9d" name="เวลาจริง" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="h6" gutterBottom>
-                    สัดส่วนสถานะการจัดส่ง
-                  </Typography>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        dataKey="value"
-                        data={statusDistribution}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                      >
-                        {statusDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </Grid>
-              </Grid>
-            </Box>
-          )}
-
           {/* แท็บการวิเคราะห์เวลา */}
-          {tabValue === 1 && (
+          {tabValue === 0 && (
             <Box sx={{ p: 3 }}>
               <TableContainer>
                 <Table>
@@ -455,8 +404,8 @@ const Reports = () => {
                     <TableRow>
                       <TableCell>รหัสการจัดส่ง</TableCell>
                       <TableCell>วันที่ออกเดินทาง</TableCell>
-                      <TableCell>เวลาคาดหวัง</TableCell>
-                      <TableCell>เวลาจริง</TableCell>
+                      <TableCell>เวลาคาดว่าจะถึง</TableCell>
+                      <TableCell>เวลาที่ถึง</TableCell>
                       <TableCell>ความแตกต่าง</TableCell>
                       <TableCell>สถานะ</TableCell>
                       <TableCell>ความคืบหน้า</TableCell>
@@ -467,9 +416,23 @@ const Reports = () => {
                       <TableRow key={shipment.ShipmentID}>
                         <TableCell>{shipment.ShipmentID}</TableCell>
                         <TableCell>
-                          {new Date(shipment.Departure_time).toLocaleDateString('th-TH')}
+                          {new Date(shipment.Departure_time).toLocaleDateString('th-TH' , {
+                                  year: 'numeric',
+                                  month: 'numeric',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit'
+                                })}
                         </TableCell>
-                        <TableCell>{formatDuration(shipment.expectedDurationHours)}</TableCell>
+                        <TableCell>{new Date(shipment.Estimated_time).toLocaleDateString('th-TH' , {
+                                  year: 'numeric',
+                                  month: 'numeric',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit'
+                                })}</TableCell>
                         <TableCell>
                           {shipment.isCompleted ? 
                             formatDuration(shipment.actualDurationHours) : 
@@ -523,7 +486,7 @@ const Reports = () => {
           )}
 
           {/* แท็บรายละเอียดแต่ละเส้นทาง */}
-          {tabValue === 2 && (
+          {tabValue === 1 && (
             <Box sx={{ p: 3 }}>
               {timeAnalysisData.map((shipment) => (
                 <Paper key={shipment.ShipmentID} sx={{ mb: 3, p: 2 }}>
@@ -537,8 +500,8 @@ const Reports = () => {
                           <TableCell>ลำดับ</TableCell>
                           <TableCell>จุดเริ่มต้น</TableCell>
                           <TableCell>จุดหมาย</TableCell>
-                          <TableCell>เวลาคาดหวัง</TableCell>
-                          <TableCell>เวลาจริง</TableCell>
+                          <TableCell>เวลาที่คาดว่าจะถึง</TableCell>
+                          <TableCell>เวลาที่ถึงจริง</TableCell>
                           <TableCell>ความแตกต่าง</TableCell>
                           <TableCell>สถานะ</TableCell>
                         </TableRow>
@@ -549,10 +512,26 @@ const Reports = () => {
                             <TableCell>{route.sequence}</TableCell>
                             <TableCell>{route.origin}</TableCell>
                             <TableCell>{route.destination}</TableCell>
-                            <TableCell>{formatDuration(route.expectedDuration)}</TableCell>
+                            <TableCell>
+                              {new Date(route.routeEstimated).toLocaleString('th-TH', {
+                                year: 'numeric',
+                                month: 'numeric',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit'
+                              })}
+                            </TableCell>
                             <TableCell>
                               {route.isCompleted ? 
-                                formatDuration(route.actualDuration) : 
+                                new Date(route.routeArrival).toLocaleString('th-TH', {
+                                  year: 'numeric',
+                                  month: 'numeric',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit'
+                                }): 
                                 'กำลังดำเนินการ'
                               }
                             </TableCell>
