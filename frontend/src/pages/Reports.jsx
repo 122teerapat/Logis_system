@@ -287,7 +287,7 @@ const Reports = () => {
     <Container maxWidth="xl">
       <Box sx={{ my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
-          รายงานการจัดส่งและการวิเคราะห์เวลา
+          รายงานการจัดส่ง 
         </Typography>
 
         {error && (
@@ -391,102 +391,13 @@ const Reports = () => {
         {/* แท็บสำหรับรายงานแต่ละประเภท */}
         <Paper sx={{ mb: 3 }}>
           <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
-            <Tab label="การวิเคราะห์เวลา" />
+            
             <Tab label="รายละเอียดแต่ละเส้นทาง" />
           </Tabs>
 
-          {/* แท็บการวิเคราะห์เวลา */}
-          {tabValue === 0 && (
-            <Box sx={{ p: 3 }}>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>รหัสการจัดส่ง</TableCell>
-                      <TableCell>วันที่ออกเดินทาง</TableCell>
-                      <TableCell>เวลาคาดว่าจะถึง</TableCell>
-                      <TableCell>เวลาที่ถึง</TableCell>
-                      <TableCell>ความแตกต่าง</TableCell>
-                      <TableCell>สถานะ</TableCell>
-                      <TableCell>ความคืบหน้า</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {timeAnalysisData.map((shipment) => (
-                      <TableRow key={shipment.ShipmentID}>
-                        <TableCell>{shipment.ShipmentID}</TableCell>
-                        <TableCell>
-                          {new Date(shipment.Departure_time).toLocaleDateString('th-TH' , {
-                                  year: 'numeric',
-                                  month: 'numeric',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  second: '2-digit'
-                                })}
-                        </TableCell>
-                        <TableCell>{new Date(shipment.Estimated_time).toLocaleDateString('th-TH' , {
-                                  year: 'numeric',
-                                  month: 'numeric',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  second: '2-digit'
-                                })}</TableCell>
-                        <TableCell>
-                          {shipment.isCompleted ? 
-                            formatDuration(shipment.actualDurationHours) : 
-                            `${formatDuration(shipment.actualDurationHours)} (กำลังดำเนินการ)`
-                          }
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            {shipment.timeDifferenceHours > 0 ? (
-                              <>
-                                <TrendingUpIcon sx={{ color: 'error.main', mr: 1 }} />
-                                <Typography color="error.main">
-                                  +{formatDuration(Math.abs(shipment.timeDifferenceHours))}
-                                </Typography>
-                              </>
-                            ) : (
-                              <>
-                                <TrendingDownIcon sx={{ color: 'success.main', mr: 1 }} />
-                                <Typography color="success.main">
-                                  -{formatDuration(Math.abs(shipment.timeDifferenceHours))}
-                                </Typography>
-                              </>
-                            )}
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={getStatusText(shipment.isOnTime, shipment.isCompleted, shipment.isDelayed)}
-                            color={getStatusColor(shipment.isOnTime, shipment.isCompleted, shipment.isDelayed)}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <LinearProgress 
-                              variant="determinate" 
-                              value={Math.min(100, shipment.completionPercentage)} 
-                              sx={{ width: 100, mr: 2 }}
-                            />
-                            <Typography variant="body2">
-                              {Math.round(shipment.completionPercentage)}%
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
-
+          
           {/* แท็บรายละเอียดแต่ละเส้นทาง */}
-          {tabValue === 1 && (
+          {tabValue === 0 && (
             <Box sx={{ p: 3 }}>
               {timeAnalysisData.map((shipment) => (
                 <Paper key={shipment.ShipmentID} sx={{ mb: 3, p: 2 }}>

@@ -85,6 +85,9 @@ const BranchMap = () => {
    map.Route.enableRoute(longdo.RouteType.Road, true);
    map.Route.enableRoute(longdo.RouteType.Tollway, useTollway);
 
+   // ค้นหาเส้นทางแรก
+   map.Route.line('road', { lineColor: 'blue' });
+   map.Route.mode(longdo.RouteMode.Distance);
    map.Route.search();
    map.Route.enableContextMenu();
    map.Route.distance(true);
@@ -112,6 +115,8 @@ const BranchMap = () => {
 
    try {
      setUpdating(true);
+     console.log('startTime value:', startTime);
+     console.log('startTime type:', typeof startTime);
      const statusCode = parseInt(routeId) === 1 ? 'SS02' : 'SS04';
      
      await updateShipmentRouteByIndex(shipmentId, routeId, {

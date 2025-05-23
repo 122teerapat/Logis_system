@@ -119,6 +119,18 @@ const Parcels = () => {
     }
   };
 
+  const getStatusColor = (statusName) => {
+    const statusColors = {
+      'SS01': '#4CAF50', // สีเขียว - รับพัสดุ
+      'SS02': '#2196F3', // สีฟ้า - อยู่ระหว่างการขนส่ง
+      'SS03': '#FF9800', // สีส้ม - ถึงสาขาปลายทาง
+      'SS04': '#4CAF50', // สีเขียว - จัดส่งสำเร็จ
+      'SS05': '#F44336', // สีแดง - จัดส่งไม่สำเร็จ
+      'SS06': '#9C27B0', // สีม่วง - คืนพัสดุ
+    };
+    return statusColors[statusName] || '#757575'; // สีเทาเป็นค่าเริ่มต้น
+  };
+
   if (loading) {
     return (
       <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -230,14 +242,42 @@ const Parcels = () => {
           ) : (
             <List>
               {statusList.map((status, index) => (
-                <Box key={index}>
-                  <ListItem>
+                <Box key={index} sx={{ position: 'relative' }}>
+                  {/* เส้นเชื่อมระหว่างสถานะ */}
+                  {index < statusList.length - 1 && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        left: '39px',
+                        top: '50px',
+                        bottom: '-20px',
+                        width: '4px',
+                        backgroundColor: '#e0e0e0',
+                        zIndex: 0
+                      }}
+                    />
+                  )}
+                  <ListItem sx={{ position: 'relative', zIndex: 1 }}>
+                    {/* วงกลมแสดงสถานะ */}
+                    <Box
+                      sx={{
+                        width: '50px',
+                        height: '50px',
+                        borderRadius: '50%',
+                        backgroundColor: getStatusColor(status.StatusID),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mr: 2,
+                        color: 'white',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {index + 1}
+                    </Box>
                     <ListItemText
                       primary={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                            {index + 1}.
-                          </Typography>
                           <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                             {status.AltName}
                           </Typography>
@@ -260,7 +300,6 @@ const Parcels = () => {
                       }
                     />
                   </ListItem>
-                  {index < statusList.length - 1 && <Divider />}
                 </Box>
               ))}
             </List>

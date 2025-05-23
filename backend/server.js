@@ -490,20 +490,20 @@ app.put('/shipment/:shipmentId/route/:sequence?', (req, res) => {
     const updateData = req.body;
     
     // กรองฟิลด์ที่อนุญาตให้อัพเดต
-    const allowedFields = ['Date_Time', 'Distance', 'Duration', 'Arrival_time', 'OriginHubID', 'DestinationHubID', 'Status'];
+    const allowedFields = ['Departure_time', 'Distance', 'Duration', 'Arrival_time', 'OriginHubID', 'DestinationHubID', 'Status'];
     const updates = Object.fromEntries(
         Object.entries(updateData).filter(([key]) => allowedFields.includes(key))
     );
     
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(updates).length === 0) {    
         return res.status(400).json({ message: "ไม่มีข้อมูลสำหรับอัพเดต" });
     }
     
     // ถ้ามี Date_Time และ Duration ให้คำนวณ Estimated_Time
-    if (updates.Date_Time && updates.Duration) {
+    if (updates.Departure_time && updates.Duration) {
         db.query(
             `SELECT DATE_ADD(?, INTERVAL ? SECOND) AS est_time`, 
-            [updates.Date_Time, updates.Duration],
+            [updates.Departure_time, updates.Duration],
             (err, result) => {
                 if (err) return res.status(500).json({ message: err.message });
                 updates.Estimated_Time = result[0].est_time;
@@ -636,6 +636,7 @@ app.get('/parcel-status-list/:parcelId', (req, res) => {
         sl.ParcelID,
         sl.Sequence,
         sl.DateTime,
+        ss.StatusID,
         ss.AltName,
         b.BranchName
     FROM logis_parcel_status_history sl
